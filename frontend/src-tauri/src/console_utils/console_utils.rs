@@ -30,8 +30,12 @@ pub fn show_console() -> Result<String, String> {
             if AllocConsole() == 0 {
                 return Err("Failed to allocate console".to_string());
             }
-            // Reinitialize stdout, stdin, stderr for the new console
-            std::env::set_var("RUST_LOG", "info");
+            // Reinitialize stdout, stdin, stderr for the new console.
+            // Respect RUST_LOG if already set (mirrors main.rs) so opening
+            // the in-app console doesn't clobber a debug level the developer chose.
+            if std::env::var("RUST_LOG").is_err() {
+                std::env::set_var("RUST_LOG", "info");
+            }
             env_logger::init();
         } else {
             // Show existing console window

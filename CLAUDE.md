@@ -296,14 +296,23 @@ Do not add new endpoints to `backend/app/main.py`; that FastAPI code is legacy a
 
 ### Frontend Debugging
 
-**Enable Rust Logging**:
+**Enable Rust Logging** (now respects the `RUST_LOG` env var instead of forcing `info`):
 ```bash
-# macOS
-RUST_LOG=debug ./clean_run.sh
+# macOS / Linux (Git Bash)
+RUST_LOG=debug pnpm run tauri:dev
 
 # Windows (PowerShell)
-$env:RUST_LOG="debug"; ./clean_run_windows.bat
+$env:RUST_LOG="debug"; pnpm run tauri:dev
+
+# Scoped to a module
+RUST_LOG=app_lib::audio=debug pnpm run tauri:dev
 ```
+
+> ⚠️ Do NOT use `clean_run_windows.bat` / `clean_run.sh` for routine development —
+> they wipe `node_modules` and the lockfile on every run (1–3 min overhead each
+> time). Use them only when dependencies are genuinely broken. For day-to-day
+> iteration, `pnpm run tauri:dev` (kept running) + `cargo test` is the fast path.
+> See `TESTING.md` for the full iteration guide.
 
 **Developer Tools**:
 - Open DevTools: `Cmd+Shift+I` (macOS) or `Ctrl+Shift+I` (Windows)
