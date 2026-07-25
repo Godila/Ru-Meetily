@@ -86,8 +86,11 @@ jobs:
           # the action fails with ENOENT looking for /repo/package.json.
           package_json_file: frontend/package.json
           # frontend/package.json has no "packageManager" field, so the
-          # action can't auto-detect a version — pin one explicitly.
-          version: 9
+          # action can't auto-detect a version — pin one explicitly. Match
+          # the version the lockfile was generated with (local dev uses 11);
+          # older pnpm (e.g. 9) reads `pnpm.overrides` differently and fails
+          # with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH.
+          version: 11
 
       - name: Setup Node
         uses: actions/setup-node@v4
