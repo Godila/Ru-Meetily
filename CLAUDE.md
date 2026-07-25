@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Meetily** is a privacy-first AI meeting assistant that captures, transcribes, and summarizes meetings entirely on local infrastructure. The supported application is the Tauri desktop app with a Rust core.
+**Ru-Meetily** is a privacy-first AI meeting assistant (a fork of Meetily) that captures, transcribes, and summarizes meetings entirely on local infrastructure. The supported application is the Tauri desktop app with a Rust core. The fork swaps the default Whisper STT for **GigaAM (Sber) E2E RNN-T** for Russian-language transcription.
 
 1. **Frontend**: Tauri-based desktop application (Rust + Next.js + TypeScript)
 2. **Rust Backend**: Tauri commands, audio capture, transcription, storage, and summarization orchestration
@@ -12,8 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Key Technology Stack
 - **Desktop App**: Tauri 2.x (Rust) + Next.js 14 + React 18
-- **Audio Processing**: Rust (cpal, whisper-rs, professional audio mixing)
-- **Transcription**: Whisper.cpp / whisper-rs and Parakeet paths in the Tauri app
+- **Audio Processing**: Rust (cpal, professional audio mixing)
+- **Transcription**: GigaAM-v3 E2E RNN-T (ONNX Runtime) — primary path for Russian. Whisper.cpp / whisper-rs and Parakeet paths remain as optional/legacy alternatives.
 - **App API Surface**: Tauri commands and events, not a separate FastAPI service
 - **LLM Integration**: Ollama (local), Claude, Groq, OpenRouter
 
@@ -388,6 +388,51 @@ $env:RUST_LOG="debug"; ./clean_run_windows.bat
   - `fix/*`: Bug fixes
   - `enhance/*`: Feature enhancements
   - Current: `fix/audio-mixing` (working on audio pipeline improvements)
+
+## MCP Tooling Rules (MANDATORY — read every session)
+
+This project has three MCP servers wired into the ZCode config (`C:\Users\geor\.zcode\cli\config.json` → `mcp.servers`). Using them is not optional — they replace slower paths (manual `grep`+`Read` loops, forgetting past decisions, losing local-only knowledge). Read this section at session start and prefer these tools.
+
+### codegraph — code intelligence knowledge graph
+
+**One tool: `mcp__codegraph__codegraph_explore`.** It is `Read`-equivalent: returns the verbatim, line-numbered source of relevant symbols grouped by file, PLUS call paths (including dynamic-dispatch hops — callbacks, React re-render, JSX children that `grep` cannot follow) and a blast-radius summary of what depends on them. Reads are sub-millisecond because the graph is pre-built.
+
+**Reach for it FIRST, before `Read`/`Grep`:**
+- Any "how does X work" / "where is X" / architecture question → one `codegraph_explore` call instead of a grep+read loop (a direct answer is typically 1–3 calls; a grep/read exploration is dozens).
+- **Before any edit** → call `codegraph_explore` with the symbol(s) you're about to change. It returns the verbatim source safe to `Edit` from AND who calls it / what it affects, so you edit with the blast radius in view. Do NOT `Read` a file that `codegraph_explore` already returned.
+- Searching across many files/dirs for a concept → use it instead of delegating to a search sub-agent (codegraph IS the pre-built search index; delegating repeats work it already did).
+
+**Query shape:** either a natural-language question OR a bag of symbol/file names (e.g. `codegraph_explore "handleOpenChange ImportAudioDialog drag-drop"`).
+
+**Index health:** the graph lives in `.codegraph/` (SQLite, WAL) and auto-syncs via file watcher (~1s lag). If you see stale results, run `codegraph sync` from `frontend/` or `codegraph index` for a full rebuild. Check state with `codegraph status`. Only one primary tool is exposed by default; granular tools (`codegraph_node`, `codegraph_callers`, …) are hidden and not needed for normal work.
+
+### agentmemory — long-term memory across sessions
+
+**Tools:** `mcp__agentmemory__memory_recall` (search), `mcp__agentmemory__memory_save` (persist insight/decision), `mcp__agentmemory__memory_smart_search`, `mcp__agentmemory__memory_export`, `mcp__agentmemory__memory_governance_delete`.
+
+**CRITICAL — worker must be running or writes are silently lost.** `agentmemory` is two-tiered: a **worker** process (`agentmemory` with no args) serves REST on `:3111` and stores data physically; the **MCP shim** (`agentmemory mcp`) only proxies to REST. If the worker is NOT running, `memory_save` returns `{"success":true}` but writes nothing — data is lost. This already caused total memory loss once.
+
+**At session start, ALWAYS verify the worker is alive before relying on memory:**
+```bash
+agentmemory status     # must show "✓ healthy" and non-zero memory counts
+```
+If it shows "Not running", start it in the background and re-check:
+```bash
+agentmemory > /tmp/agentmemory.log 2>&1 & sleep 8 && agentmemory status
+```
+Only treat `memory_recall` results as complete after confirming the worker is healthy. If unsure whether a save persisted, re-`recall` it immediately and verify it appears.
+
+**When to save:** at the end of any non-trivial task — architectural decisions, root-caused bugs + their fix, environment gotchas, reproduction steps, project status. Tag with `project: "ru-meetily"`, `concepts`, `files`, and a meaningful `type` (`architecture` / `bug` / `workflow` / `fact`).
+
+### edgequake — document/knowledge-graph RAG (optional)
+
+**Tools:** `mcp__edgequake__query`, `mcp__edgequake__document_upload`, `mcp__edgequake__graph_search_*`. Use only when you specifically need to ingest an external document (PDF/MD/TXT) and RAG-query it — not for codebase questions (use codegraph for those).
+
+### Order of preference for a code question
+
+1. `codegraph_explore` (one call, source + callers + blast radius)
+2. `Read`/`Grep` only when codegraph doesn't cover the area
+3. Search sub-agent / general-purpose agent only for genuinely broad fan-out codegraph can't scope
 
 ## Key Files Reference
 
