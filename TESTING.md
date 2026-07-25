@@ -55,20 +55,43 @@ cargo test --manifest-path frontend/src-tauri/Cargo.toml summary::templates -- -
 
 ### Интеграционный тест с реальным аудио (GigaAM)
 
-Шаблон: `frontend/src-tauri/src/audio/import.rs:1312`
-(`test_import_pipeline_decode_vad`, `#[ignore]`). Тест берёт WAV из env,
-декодирует, гонит через VAD. Расширь до RNN-T для отладки транскрипции:
+Два готовых harness-теста:
+
+**VAD-проверка** (декодер + silero-VAD, без модели): шаблон
+`frontend/src-tauri/src/audio/import.rs:1312`
+(`test_import_pipeline_decode_vad`, `#[ignore]`). Берёт аудио из env, декодирует,
+гонит через VAD с разными `redemption_time` и печатает статистику сегментов.
+
+**GigaAM-транскрипция** (полный пайплайн до текста): тест
+`gigaam_engine::tests::test_transcribe_real_audio` в
+`frontend/src-tauri/src/gigaam_engine/gigaam_engine.rs`. Использует
+`GigaamEngine::new_with_models_dir(Option<PathBuf>)` — конструктор без
+`AppHandle`, поэтому работает в изолированном тесте. Грузит модель
+`gigaam-v3-rnnt-int8`, гонит 16kHz-mono аудио через RNN-T и печатает транскрипт +
+RTF (real-time factor).
+
+Запуск GigaAM-harness:
 
 ```bash
 TEST_AUDIO_PATH=C:/path/to/sample.wav \
+GIGAAM_MODELS_DIR=C:/Users/geor/AppData/Roaming/Meetily/models \
   cargo test --manifest-path frontend/src-tauri/Cargo.toml \
-  -- --ignored --nocapture
+    gigaam_engine::tests::test_transcribe_real_audio -- \
+    --ignored --nocapture
 ```
 
-**Проблема для GigaAM:** `GigaamEngine` требует `AppHandle` для пути к моделям
-(неудобно в юнит-тесте). Чтобы сделать транскрипционный harness, нужно
-рефакторить — добавить конструктор, принимающий явный путь к моделям. Это
-отдельная задача (не в этом PR).
+Env-переменные:
+- `TEST_AUDIO_PATH` (обязательно) — путь к аудио (wav/mp4/m4a/…; декодер
+  использует FFmpeg sidecar).
+- `GIGAAM_MODELS_DIR` (опц.) — **родитель** поддиректории `gigaam` с моделями.
+  По умолчанию движок берёт платформенный AppData (на Windows это
+  `%APPDATA%\Meetily\models`). Передавай, если модели лежат в нестандартном
+  месте. Движок сам добавит `gigaam` к пути.
+- `GIGAAM_MODEL_NAME` (опц.) — имя модели из каталога; по умолчанию
+  `gigaam-v3-rnnt-int8`.
+
+Тест требует, чтобы модель уже была скачана (через UI приложения) — он её не
+докачивает. Если модель не `Available`, тест упадёт с понятной диагностикой.
 
 ### Frontend
 
@@ -114,9 +137,11 @@ webview. Для UI-логики нужен vitest с моками `@tauri-apps/a
    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml"
    ```
 
-4. **GigaAM транскрипционный harness** — `#[ignore]`d тест по образцу
-   `audio/import.rs:1312`, который грузит движок по явному пути и печатает
-   транскрипт. Требует рефакторинга `GigaamEngine` (см. выше).
+4. **GigaAM транскрипционный harness** — ✅ **СДЕЛАНО.** Тест
+   `gigaam_engine::tests::test_transcribe_real_audio` грузит движок по
+   явному пути (`new_with_models_dir`, без `AppHandle`) и печатает транскрипт.
+   Рефакторинга `GigaamEngine` не потребовалось — нужный конструктор уже был.
+   См. выше раздел «Интеграционный тест с реальным аудио (GigaAM)».
 
 5. **Frontend-тесты** — vitest + mock `@tauri-apps/api`. Начать с
    `useTemplates` (чистая логика + invoke) и `SidebarProvider`.

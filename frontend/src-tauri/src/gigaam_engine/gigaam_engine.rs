@@ -1006,3 +1006,167 @@ impl GigaamEngine {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // The single model name registered by `discover_models` (see model_configs
+    // above). Kept in sync manually — if the catalog gains variants, extend the
+    // harness to pick from env `GIGAAM_MODEL_NAME`.
+    const DEFAULT_MODEL_NAME: &str = "gigaam-v3-rnnt-int8";
+
+    /// `new_with_models_dir` accepts an explicit path and never touches the
+    /// Tauri `AppHandle`, which is what makes a standalone transcription harness
+    /// possible without booting the full app.
+    #[test]
+    fn new_with_models_dir_uses_explicit_path() {
+        let tmp = tempfile::tempdir().expect("temp dir");
+        let parent = tmp.path().to_path_buf();
+        // The engine appends a "gigaam" subdir, so the on-disk dir is parent/gigaam.
+        let engine = GigaamEngine::new_with_models_dir(Some(parent.clone()))
+            .expect("engine with explicit dir");
+
+        let expected = parent.join("gigaam");
+        assert_eq!(engine.models_dir, expected);
+        assert!(expected.exists(), "models dir was created");
+    }
+
+    /// Falls back to a platform-default location when no path is supplied.
+    /// Verifies the fallback resolves rather than panics.
+    #[test]
+    fn new_with_models_dir_falls_back_to_default() {
+        let engine = GigaamEngine::new_with_models_dir(None);
+        assert!(
+            engine.is_ok(),
+            "default path resolution failed: {}",
+            engine.err().map(|e| e.to_string()).unwrap_or_default()
+        );
+    }
+
+    /// End-to-end transcription harness. Requires the GigaAM-v3 E2E RNN-T model
+    /// to be downloaded under `<models_dir>/gigaam-v3-rnnt-int8/` and a real
+    /// audio file. Marked `#[ignore]` so it never runs in CI or `cargo test`
+    /// without an explicit opt-in.
+    ///
+    /// Usage:
+    ///   TEST_AUDIO_PATH=C:/path/to/sample.wav \
+    ///   cargo test --manifest-path frontend/src-tauri/Cargo.toml \
+    ///     gigaam_engine::tests::test_transcribe_real_audio -- \
+    ///     --ignored --nocapture
+    ///
+    /// Optional env:
+    ///   GIGAAM_MODELS_DIR  - parent of the "gigaam" subdir (defaults to the
+    ///                        engine's platform default; pass a temp/shared
+    ///                        dir if you keep models outside AppData).
+    ///   GIGAAM_MODEL_NAME   - override the model catalog entry (defaults to
+    ///                        "gigaam-v3-rnnt-int8").
+    #[tokio::test]
+    #[ignore]
+    async fn test_transcribe_real_audio() {
+        let audio_path = std::env::var("TEST_AUDIO_PATH")
+            .expect("Set TEST_AUDIO_PATH to a real audio file to run this harness");
+
+        let path = std::path::Path::new(&audio_path);
+        assert!(
+            path.exists(),
+            "TEST_AUDIO_PATH does not exist: {}",
+            audio_path
+        );
+
+        let model_name =
+            std::env::var("GIGAAM_MODEL_NAME").unwrap_or_else(|_| DEFAULT_MODEL_NAME.to_string());
+
+        // Build the engine without any AppHandle — the whole point of the
+        // new_with_models_dir constructor. GIGAAM_MODELS_DIR is the *parent*;
+        // the engine appends "gigaam".
+        let models_dir_parent = std::env::var("GIGAAM_MODELS_DIR").ok().map(PathBuf::from);
+        if let Some(ref p) = models_dir_parent {
+            println!("Using GIGAAM_MODELS_DIR parent: {}", p.display());
+        }
+
+        let engine = GigaamEngine::new_with_models_dir(models_dir_parent)
+            .expect("failed to construct GigaamEngine");
+
+        // Step 1: decode + resample to 16kHz mono (GigaAM input contract).
+        println!("Decoding {}...", audio_path);
+        let decoded = crate::audio::decoder::decode_audio_file(path)
+            .expect("failed to decode audio file");
+        println!(
+            "Decoded: {:.2}s, {}Hz, {} channels, {} samples",
+            decoded.duration_seconds,
+            decoded.sample_rate,
+            decoded.channels,
+            decoded.samples.len()
+        );
+
+        let samples = decoded.to_whisper_format();
+        println!(
+            "Resampled: {} samples ({:.2}s at 16kHz)",
+            samples.len(),
+            samples.len() as f64 / 16000.0
+        );
+
+        // Step 2: discover + load the model.
+        println!("Discovering models...");
+        let discovered = engine
+            .discover_models()
+            .await
+            .expect("discover_models failed");
+        let available: Vec<&str> = discovered
+            .iter()
+            .filter(|m| matches!(m.status, ModelStatus::Available))
+            .map(|m| m.name.as_str())
+            .collect();
+        println!("Available models: {:?}", available);
+
+        let want = discovered.iter().find(|m| m.name == model_name);
+        match want.map(|m| &m.status) {
+            Some(ModelStatus::Available) => {}
+            Some(other) => panic!(
+                "Model '{}' is present but not Available (status: {:?}). \
+                 Download it via the app first or point GIGAAM_MODELS_DIR at the right dir.",
+                model_name, other
+            ),
+            None => panic!(
+                "Model '{}' not found by discover_models. Available: {:?}",
+                model_name, available
+            ),
+        }
+
+        println!("Loading model '{}'...", model_name);
+        let t0 = Instant::now();
+        engine
+            .load_model(&model_name)
+            .await
+            .unwrap_or_else(|e| panic!("load_model failed: {}", e));
+        println!("Model loaded in {:.2}s", t0.elapsed().as_secs_f64());
+
+        // Step 3: transcribe and print the result.
+        println!("Transcribing {} samples...", samples.len());
+        let t1 = Instant::now();
+        let transcript = engine
+            .transcribe_audio(samples)
+            .await
+            .expect("transcribe_audio failed");
+        let elapsed = t1.elapsed().as_secs_f64();
+        println!("Transcription took {:.2}s", elapsed);
+
+        let audio_secs = decoded.duration_seconds.max(0.001);
+        println!();
+        println!("=== TRANSCRIPT ===");
+        println!("{}", transcript);
+        println!("==================");
+        println!(
+            "RTF (real-time factor): {:.2}x ({:.1}s audio in {:.1}s)",
+            audio_secs / elapsed,
+            audio_secs,
+            elapsed
+        );
+
+        // Sanity: a real transcription is non-empty and contains at least one
+        // alphanumeric character (RNN-T outputs punct + true-case).
+        let has_text = transcript.chars().any(|c| c.is_alphanumeric());
+        assert!(has_text, "Transcript is empty/whitespace-only");
+    }
+}
