@@ -226,6 +226,17 @@ export default function PageContent({
           onTemplateSelect={templates.handleTemplateSelection}
           isModelConfigLoading={false}
           onOpenModelSettings={handleRegisterModalOpen}
+          editorState={{
+            open: templates.editorOpen,
+            target: templates.editorTarget,
+            onOpenCreate: templates.openCreateEditor,
+            onOpenEdit: templates.openEditEditor,
+            onClose: templates.closeEditor,
+            onCreate: templates.createTemplate,
+            onUpdate: templates.updateTemplate,
+            onDelete: templates.deleteTemplate,
+            onFetchExisting: templates.fetchCustomTemplateJson,
+          }}
         />
       </div>
     </motion.div>

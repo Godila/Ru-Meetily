@@ -14,17 +14,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sparkles, Settings, Loader2, FileText, Check, Square } from 'lucide-react';
+import { Sparkles, Settings, Loader2, FileText, Check, Square, Pencil, Plus } from 'lucide-react';
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { isOllamaNotInstalledError } from '@/lib/utils';
 import { BuiltInModelInfo } from '@/lib/builtin-ai';
+import { TemplateEditorDialog } from './TemplateEditorDialog';
+import type { EditorTarget, TemplateDraft, TemplateInfo } from '@/hooks/meeting-details/useTemplates';
 
-interface SummaryGeneratorButtonGroupProps {
+export interface SummaryGeneratorButtonGroupProps {
   languageSlot?: ReactNode;
   modelConfig: ModelConfig;
   setModelConfig: (config: ModelConfig | ((prev: ModelConfig) => ModelConfig)) => void;
@@ -33,13 +36,26 @@ interface SummaryGeneratorButtonGroupProps {
   onStopGeneration: () => void;
   customPrompt: string;
   summaryStatus: 'idle' | 'processing' | 'summarizing' | 'regenerating' | 'completed' | 'error';
-  availableTemplates: Array<{ id: string, name: string, description: string }>;
+  availableTemplates: TemplateInfo[];
   selectedTemplate: string;
   onTemplateSelect: (templateId: string, templateName: string) => void;
   hasTranscripts?: boolean;
   hasSummary?: boolean;
   isModelConfigLoading?: boolean;
   onOpenModelSettings?: (openFn: () => void) => void;
+  /** Optional template editor wiring. When provided, a "Manage templates" entry
+   *  appears in the template dropdown and renders the editor dialog. */
+  editorState?: {
+    open: boolean;
+    target: EditorTarget | null;
+    onOpenCreate: () => void;
+    onOpenEdit: (template: TemplateInfo) => void;
+    onClose: () => void;
+    onCreate: (draft: TemplateDraft) => Promise<TemplateInfo | null>;
+    onUpdate: (id: string, draft: TemplateDraft) => Promise<TemplateInfo | null>;
+    onDelete: (id: string) => Promise<boolean>;
+    onFetchExisting: (id: string) => Promise<string | null>;
+  };
 }
 
 export function SummaryGeneratorButtonGroup({
@@ -57,7 +73,8 @@ export function SummaryGeneratorButtonGroup({
   hasSummary = false,
   isModelConfigLoading = false,
   onOpenModelSettings,
-  languageSlot
+  languageSlot,
+  editorState
 }: SummaryGeneratorButtonGroupProps) {
   const [isCheckingModels, setIsCheckingModels] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
@@ -334,10 +351,10 @@ export function SummaryGeneratorButtonGroup({
               title="Выбрать шаблон резюме"
             >
               <FileText />
-              <span className="hidden lg:inline">Template</span>
+              <span className="hidden lg:inline">Шаблон</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-64">
             {availableTemplates.map((template) => (
               <DropdownMenuItem
                 key={template.id}
@@ -345,15 +362,61 @@ export function SummaryGeneratorButtonGroup({
                 title={template.description}
                 className="flex items-center justify-between gap-2"
               >
-                <span>{template.name}</span>
-                {selectedTemplate === template.id && (
-                  <Check className="h-4 w-4 text-green-600" />
-                )}
+                <span className="flex items-center gap-2 truncate">
+                  {template.name}
+                  {template.is_protected && (
+                    <span className="text-[10px] uppercase text-muted-foreground">встр.</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-1">
+                  {editorState && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editorState.onOpenEdit(template);
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Редактировать шаблон"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {selectedTemplate === template.id && (
+                    <Check className="h-4 w-4 text-green-600" />
+                  )}
+                </span>
               </DropdownMenuItem>
             ))}
 
+            {editorState && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={editorState.onOpenCreate}
+                  className="flex items-center gap-2 text-blue-600 focus:text-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Создать шаблон…
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+
+      {editorState && (
+        <TemplateEditorDialog
+          open={editorState.open}
+          onOpenChange={(open) => {
+            if (!open) editorState.onClose();
+          }}
+          target={editorState.target}
+          loadExisting={editorState.onFetchExisting}
+          onCreate={editorState.onCreate}
+          onUpdate={editorState.onUpdate}
+          onDelete={editorState.onDelete}
+        />
       )}
     </ButtonGroup>
   );
