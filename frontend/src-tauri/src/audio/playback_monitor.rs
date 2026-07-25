@@ -160,7 +160,11 @@ async fn get_linux_output() -> Result<AudioOutputInfo> {
 mod tests {
     use super::*;
 
+    /// Hardware-dependent: requires a real audio output device. Marked
+    /// #[ignore] so CI runners without audio hardware don't fail — run
+    /// locally with `cargo test test_get_output_device -- --ignored`.
     #[tokio::test]
+    #[ignore]
     async fn test_get_output_device() {
         let result = get_active_audio_output().await;
         assert!(result.is_ok(), "Should be able to get output device");
