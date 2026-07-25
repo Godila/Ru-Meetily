@@ -36,12 +36,12 @@ jobs:
       run:
         working-directory: frontend/src-tauri
     env:
-      # Skip FFmpeg download + tauri_build's sidecar verification. Unit tests
-      # don't exercise the runtime sidecars (FFmpeg, llama-helper), and pulling
-      # 100MB FFmpeg on every run — plus tauri_build hard-failing on the missing
-      # llama-helper binary that has no download path — would block CI forever.
-      # The build.rs honors this; local dev leaves it unset for real builds.
+      # Skip FFmpeg download (unit tests don't exercise the runtime sidecar).
       MEETILY_SKIP_SIDECAR_VERIFY: "1"
+      # Empty out bundle.externalBin so tauri_build doesn't try to verify the
+      # llama-helper sidecar is present on disk (it has no download path).
+      # ACL manifest generation still runs — generate_context!() needs it.
+      TAURI_CONFIG: '{"bundle":{"externalBin":[]}}'
     steps:
       - uses: actions/checkout@v4
 
@@ -95,7 +95,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # pnpm 11 (pinned above) requires Node >= 22.13.
+          node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
