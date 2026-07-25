@@ -1,4 +1,4 @@
-use crate::summary::templates;
+use crate::summary::templates::{self, Template, TemplateSection};
 use serde::{Deserialize, Serialize};
 use tauri::Runtime;
 use tracing::{info, warn};
@@ -14,6 +14,11 @@ pub struct TemplateInfo {
 
     /// Brief description of the template's purpose
     pub description: String,
+
+    /// Whether the template is read-only (built-in or bundled).
+    /// Custom templates the user owns return false here.
+    #[serde(default)]
+    pub is_protected: bool,
 }
 
 /// Detailed template structure for preview/debugging
@@ -50,6 +55,7 @@ pub async fn api_list_templates<R: Runtime>(
     let template_infos: Vec<TemplateInfo> = templates
         .into_iter()
         .map(|(id, name, description)| TemplateInfo {
+            is_protected: templates::is_protected_id(&id),
             id,
             name,
             description,
@@ -121,6 +127,116 @@ pub async fn api_validate_template<R: Runtime>(
             Err(e)
         }
     }
+}
+
+/// Body for create / update template commands.
+///
+/// Mirrors [`templates::types::Template`] but is a separate DTO so the
+/// command layer can evolve independently of the on-disk schema. The id is
+/// not part of the body — it is derived from the name on create, or supplied
+/// as an explicit command argument on update.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TemplateDraft {
+    pub name: String,
+    pub description: String,
+    pub sections: Vec<TemplateSection>,
+}
+
+impl TemplateDraft {
+    fn into_template(self) -> Template {
+        Template {
+            name: self.name,
+            description: self.description,
+            sections: self.sections,
+        }
+    }
+}
+
+/// Create a new custom template.
+///
+/// The id is derived from the name via slugification; if the resulting id
+/// already exists (in custom, bundled, or built-in sources) a numeric suffix
+/// is appended so the new template never silently overwrites an existing one.
+/// To intentionally override a built-in, use [`api_update_custom_template`]
+/// with the built-in id.
+///
+/// # Returns
+/// The final template id and a refreshed TemplateInfo list (so the UI can
+/// update its dropdown without a separate list call).
+#[tauri::command]
+pub async fn api_create_custom_template<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    draft: TemplateDraft,
+) -> Result<TemplateInfo, String> {
+    info!("api_create_custom_template called for '{}'", draft.name);
+
+    let template = draft.into_template();
+    template.validate()?;
+
+    let base_id = templates::slug_from_name(&template.name);
+    let final_id = templates::unique_template_id(&base_id)?;
+    templates::save_custom_template(&final_id, &template)?;
+
+    Ok(TemplateInfo {
+        id: final_id,
+        name: template.name,
+        description: template.description,
+        is_protected: false,
+    })
+}
+
+/// Update an existing custom template, or create a custom override of a
+/// built-in/bundled one.
+///
+/// Editing a protected id (built-in/bundled) without an existing custom
+/// override is refused — the UI should offer "Save as copy" (create with a
+/// new name) instead, so built-ins are never silently mutated.
+#[tauri::command]
+pub async fn api_update_custom_template<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+    draft: TemplateDraft,
+) -> Result<TemplateInfo, String> {
+    info!("api_update_custom_template called for '{}'", template_id);
+
+    let template = draft.into_template();
+    let final_id = templates::update_custom_template(&template_id, &template)?;
+
+    Ok(TemplateInfo {
+        id: final_id,
+        name: template.name,
+        description: template.description,
+        is_protected: false,
+    })
+}
+
+/// Delete a custom template by id.
+///
+/// Idempotent: deleting a non-existent custom file is a no-op. Protected ids
+/// that have no custom override are refused (the built-in would just resurface).
+/// Removing a custom *override* of a protected id is allowed (restores the
+/// built-in) and is logged for auditability.
+#[tauri::command]
+pub async fn api_delete_custom_template<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+) -> Result<(), String> {
+    info!("api_delete_custom_template called for '{}'", template_id);
+    templates::delete_custom_template(&template_id)
+}
+
+/// Return the raw JSON of a custom template for the editor's "Edit" mode.
+///
+/// Returns null when no custom file exists for the id (e.g. the user wants
+/// to edit a built-in — the UI should then route to "Save as copy" prefilled
+/// with the built-in's content fetched via [`api_get_template_details`]).
+#[tauri::command]
+pub async fn api_get_custom_template_json<R: Runtime>(
+    _app: tauri::AppHandle<R>,
+    template_id: String,
+) -> Result<Option<String>, String> {
+    info!("api_get_custom_template_json called for '{}'", template_id);
+    templates::read_custom_template_json(&template_id)
 }
 
 #[cfg(test)]
