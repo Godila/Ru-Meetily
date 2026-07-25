@@ -83,6 +83,10 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
+        with:
+          # package.json lives in frontend/, not repo root — without this
+          # the action fails with ENOENT looking for /repo/package.json.
+          package_json_file: frontend/package.json
 
       - name: Setup Node
         uses: actions/setup-node@v4
