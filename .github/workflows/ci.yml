@@ -35,6 +35,13 @@ jobs:
     defaults:
       run:
         working-directory: frontend/src-tauri
+    env:
+      # Skip FFmpeg download + tauri_build's sidecar verification. Unit tests
+      # don't exercise the runtime sidecars (FFmpeg, llama-helper), and pulling
+      # 100MB FFmpeg on every run — plus tauri_build hard-failing on the missing
+      # llama-helper binary that has no download path — would block CI forever.
+      # The build.rs honors this; local dev leaves it unset for real builds.
+      MEETILY_SKIP_SIDECAR_VERIFY: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -51,17 +58,8 @@ jobs:
         with:
           workspaces: frontend/src-tauri
 
-      # FFmpeg is downloaded by build.rs into frontend/src-tauri/binaries/ on
-      # first build. Cache it across runs to skip the ~30s download. The path
-      # matches where build/ffmpeg.rs writes the binary.
-      - name: Cache FFmpeg sidecar
-        uses: actions/cache@v4
-        with:
-          path: frontend/src-tauri/binaries
-          key: ffmpeg-${{ runner.os }}-${{ hashFiles('frontend/src-tauri/build/ffmpeg.rs') }}
-
       - name: Build tests
-        run: cargo test --lib --no-run --locked
+        run: cargo test --lib --no-run
 
       - name: Run tests
         run: cargo test --lib --no-fail-fast
@@ -87,6 +85,9 @@ jobs:
           # package.json lives in frontend/, not repo root — without this
           # the action fails with ENOENT looking for /repo/package.json.
           package_json_file: frontend/package.json
+          # frontend/package.json has no "packageManager" field, so the
+          # action can't auto-detect a version — pin one explicitly.
+          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4

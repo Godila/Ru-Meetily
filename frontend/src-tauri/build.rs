@@ -15,10 +15,22 @@ fn main() {
         // The swift-rs crate build will be handled in the enhanced_macos crate's build.rs
     }
 
-    // Download and bundle FFmpeg binary at build-time
-    ffmpeg::ensure_ffmpeg_binary();
+    // CI / test-only escape hatch: skip downloading FFmpeg and the tauri_build
+    // step (which also verifies the llama-helper sidecar is present). The unit
+    // tests don't need these runtime sidecars, and pulling 100MB+ FFmpeg plus
+    // locating llama-helper on every CI run is wasteful and brittle. Set
+    //   MEETILY_SKIP_SIDECAR_VERIFY=1
+    // to use this (CI sets it; local dev leaves it unset for full builds).
+    let skip_sidecars = std::env::var("MEETILY_SKIP_SIDECAR_VERIFY").map_or(false, |v| v == "1");
 
-    tauri_build::build()
+    if !skip_sidecars {
+        // Download and bundle FFmpeg binary at build-time
+        ffmpeg::ensure_ffmpeg_binary();
+        tauri_build::build();
+    } else {
+        println!("cargo:warning=⏭️  Skipping sidecar download + tauri_build (MEETILY_SKIP_SIDECAR_VERIFY=1).");
+        println!("cargo:warning=    This is fine for cargo test, but NOT for a real app build.");
+    }
 }
 
 /// Detects GPU acceleration capabilities and provides build guidance
