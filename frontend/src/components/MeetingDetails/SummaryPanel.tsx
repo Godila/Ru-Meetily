@@ -62,7 +62,9 @@ interface SummaryPanelProps {
   onTemplateSelect: (templateId: string, templateName: string) => void;
   isModelConfigLoading?: boolean;
   onOpenModelSettings?: (openFn: () => void) => void;
-  /** Optional editor wiring, forwarded to all SummaryGeneratorButtonGroup renders. */
+  /** Optional editor wiring, forwarded to the interactive button-group renders
+   *  (existing summary and empty state). NOT forwarded to the loading-state
+   *  render, to avoid template edits while a summary is generating. */
   editorState?: SummaryGeneratorButtonGroupProps['editorState'];
 }
 
@@ -360,6 +362,7 @@ export function SummaryPanel({
               hasSummary={false}
               isModelConfigLoading={isModelConfigLoading}
               onOpenModelSettings={onOpenModelSettings}
+              editorState={editorState}
               languageSlot={transcripts.length > 0 ? languageSlot : undefined}
             />
           </div>

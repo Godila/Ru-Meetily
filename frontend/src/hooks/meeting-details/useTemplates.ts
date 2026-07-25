@@ -36,10 +36,12 @@ export interface TemplateDraft {
 
 /** What the editor is working on: either a brand-new template, or an edit
  *  of an existing id. For protected templates the editor opens in "copy" mode
- *  so the built-in is never mutated. */
+ *  so the built-in is never mutated. Carrying the full TemplateInfo lets the
+ *  dialog prefill name/description even for built-ins (which have no custom
+ *  JSON on disk). */
 export type EditorTarget =
   | { mode: 'create' }
-  | { mode: 'edit'; id: string; isProtected: boolean };
+  | { mode: 'edit'; id: string; isProtected: boolean; info: TemplateInfo };
 
 export function useTemplates() {
   const [availableTemplates, setAvailableTemplates] = useState<TemplateInfo[]>([]);
@@ -88,6 +90,7 @@ export function useTemplates() {
       mode: 'edit',
       id: template.id,
       isProtected: template.is_protected ?? false,
+      info: template,
     });
     setEditorOpen(true);
   }, []);

@@ -112,27 +112,42 @@ pub fn slug_from_name(name: &str) -> String {
 /// Return `id` if free, otherwise `id-2`, `id-3`, … up to a sane limit.
 /// Used when saving a new custom template to avoid clobbering an existing one
 /// by accident (the user explicitly chose "Save as copy").
+///
+/// "Free" means the id does NOT collide with any template the user can already
+/// see: an existing custom file, a bundled file, or a built-in. This prevents
+/// a freshly-created template from silently shadowing a built-in (which would
+/// make the built-in unreachable and leave the user with no UI to undo it —
+/// the custom file would be reported as protected and block delete/edit-in-place).
 pub fn unique_template_id(base: &str) -> Result<String, String> {
     let base = sanitize_template_id(base)?;
-    if !template_file_exists(&base)? {
+    if !id_is_taken(&base) {
         return Ok(base);
     }
     for n in 2..=1000 {
         let candidate = format!("{}-{}", base, n);
-        if !template_file_exists(&candidate)? {
+        if !id_is_taken(&candidate) {
             return Ok(candidate);
         }
     }
     Err(format!("Could not find a free id based on '{}'", base))
 }
 
-/// Whether a template file already exists in the custom dir for the given id.
-fn template_file_exists(id: &str) -> Result<bool, String> {
-    let dir = get_custom_templates_dir();
-    Ok(match dir {
+/// Whether a given id is already in use across ANY tier (custom file on disk,
+/// bundled file, or built-in). Used by [`unique_template_id`] to keep new
+/// creates from shadowing built-ins.
+fn id_is_taken(id: &str) -> bool {
+    if is_protected_id(id) {
+        return true;
+    }
+    match get_custom_templates_dir() {
         Some(dir) => dir.join(format!("{}.json", id)).exists(),
         None => false,
-    })
+    }
+}
+
+/// Whether a template file already exists in the custom dir for the given id.
+fn template_file_exists(id: &str) -> Result<bool, String> {
+    Ok(id_is_taken(id))
 }
 
 /// True if the id refers to an immutable built-in or bundled template.
@@ -156,11 +171,20 @@ pub fn is_protected_id(id: &str) -> bool {
 /// Load a template from the bundled resources directory
 ///
 /// # Arguments
-/// * `template_id` - Template identifier (without .json extension)
+/// * `template_id` - Template identifier (without .json extension); must pass
+///   [`sanitize_template_id`] (caller is responsible, but this fn also rejects
+///   traversal defensively by refusing anything that would escape the dir).
 ///
 /// # Returns
 /// The template JSON content if found, None otherwise
 fn load_bundled_template(template_id: &str) -> Option<String> {
+    // Defensive: bundled IDs always come from our own enumeration, but
+    // refuse anything that isn't a clean id so a future caller can't read
+    // arbitrary files via this path.
+    if sanitize_template_id(template_id).is_err() {
+        debug!("Refusing bundled template lookup with unsafe id '{}'", template_id);
+        return None;
+    }
     let bundled_dir = BUNDLED_TEMPLATES_DIR.read().ok()?.clone()?;
     let template_path = bundled_dir.join(format!("{}.json", template_id));
 
@@ -186,6 +210,12 @@ fn load_bundled_template(template_id: &str) -> Option<String> {
 /// # Returns
 /// The template JSON content if found, None otherwise
 fn load_custom_template(template_id: &str) -> Option<String> {
+    // Same traversal guard as the bundled path — IDs from disk are always
+    // clean, but a webview-supplied id must not escape the custom dir.
+    if sanitize_template_id(template_id).is_err() {
+        debug!("Refusing custom template lookup with unsafe id '{}'", template_id);
+        return None;
+    }
     let custom_dir = get_custom_templates_dir()?;
     let template_path = custom_dir.join(format!("{}.json", template_id));
 
@@ -600,14 +630,17 @@ mod tests {
     }
 
     #[test]
-    fn test_unique_template_id_appends_suffix_on_conflict() {
-        let dir = tempfile::tempdir().unwrap();
-        save_template_to_dir("dup", &sample_template("Dup"), dir.path()).unwrap();
+    fn test_unique_template_id_appends_suffix_on_builtin_collision() {
+        // "daily_standup" is a built-in id → must not be handed out as-is on
+        // create (would shadow the builtin). unique_template_id must produce a
+        // free variant instead.
+        let result = unique_template_id("daily_standup").unwrap();
+        assert_ne!(result, "daily_standup");
+        assert!(result.starts_with("daily_standup-"));
+    }
 
-        // template_file_exists() looks in the REAL custom dir (which we can't
-        // override without a refactor), so we test the suffix logic directly:
-        // base "dup" collides with the on-disk file only in the real dir.
-        // Here we instead assert the no-conflict path returns the base id.
+    #[test]
+    fn test_unique_template_id_returns_base_when_free() {
         let free = unique_template_id("surely_free_xyz_unique").unwrap();
         assert_eq!(free, "surely_free_xyz_unique");
     }

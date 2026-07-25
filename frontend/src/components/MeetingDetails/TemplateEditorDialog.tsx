@@ -42,9 +42,6 @@ interface TemplateEditorDialogProps {
   target: EditorTarget | null;
   /** Read the on-disk JSON of an existing custom template (null if none). */
   loadExisting: (id: string) => Promise<string | null>;
-  /** For protected templates with no custom override, fall back to the built-in
-   *  details so the editor prefills with the built-in content for copying. */
-  loadProtectedDetails?: (id: string) => Promise<TemplateInfo | null>;
   onCreate: (draft: TemplateDraft) => Promise<TemplateInfo | null>;
   onUpdate: (id: string, draft: TemplateDraft) => Promise<TemplateInfo | null>;
   onDelete?: (id: string) => Promise<boolean>;
@@ -80,7 +77,6 @@ export function TemplateEditorDialog({
   onOpenChange,
   target,
   loadExisting,
-  loadProtectedDetails,
   onCreate,
   onUpdate,
   onDelete,
@@ -110,8 +106,10 @@ export function TemplateEditorDialog({
       }
 
       // Edit mode: prefer the custom on-disk JSON (exact content). For a
-      // protected template with no custom file, fall back to built-in details
-      // so the editor opens pre-filled in "copy" mode.
+      // protected template with no custom file, prefill name/description from
+      // the TemplateInfo we already have (the dropdown had it) so the user
+      // starts from the built-in's metadata rather than a blank form. Sections
+      // cannot be reconstructed from TemplateInfo and are left for the user.
       try {
         const customJson = await loadExisting(target.id);
         if (cancelled) return;
@@ -125,18 +123,14 @@ export function TemplateEditorDialog({
               ? parsed.sections
               : [{ ...EMPTY_SECTION }],
           });
-        } else if (loadProtectedDetails) {
-          const info = await loadProtectedDetails(target.id);
-          if (cancelled) return;
-          if (info) {
-            // We only have name/description from TemplateInfo; prefill those
-            // and let the user re-author the sections.
-            setDraft({
-              name: `${info.name} (копия)`,
-              description: info.description,
-              sections: [{ ...EMPTY_SECTION }],
-            });
-          }
+        } else if (target.mode === 'edit') {
+          // Built-in/bundled with no custom override: prefill metadata, leave
+          // sections empty for the user to author (we don't have instructions).
+          setDraft({
+            name: target.isProtected ? `${target.info.name} (копия)` : target.info.name,
+            description: target.info.description,
+            sections: [{ ...EMPTY_SECTION }],
+          });
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -149,7 +143,7 @@ export function TemplateEditorDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, target, loadExisting, loadProtectedDetails]);
+  }, [open, target, loadExisting]);
 
   const copyMode = isCopyMode(target);
 
@@ -200,10 +194,13 @@ export function TemplateEditorDialog({
         })),
       };
 
-      const result =
-        copyMode || target?.mode === 'create'
-          ? await onCreate(cleaned)
-          : await onUpdate(target!.id, cleaned);
+      // copyMode is true for create-mode AND for protected edit-mode; both
+      // produce a new template. Only a non-protected edit updates in place.
+      // The non-null/non-create assertion is safe: copyMode is the only
+      // create-mode branch, so the else branch always has an edit-mode target.
+      const result = copyMode
+        ? await onCreate(cleaned)
+        : await onUpdate((target as { id: string }).id, cleaned);
 
       if (result) {
         onOpenChange(false);
