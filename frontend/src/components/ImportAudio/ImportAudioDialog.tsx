@@ -169,13 +169,15 @@ export function ImportAudioDialog({
     const name = selectedModelKey.slice(colonIndex + 1);
     return availableModels.find((m) => m.provider === provider && m.name === name);
   }, [selectedModelKey, availableModels]);
-  const isParakeetModel = selectedModel?.provider === 'parakeet';
+  // Language-fixed providers (Parakeet = English, GigaAM = Russian): no
+  // manual language selection, force auto.
+  const isLanguageFixedModel = selectedModel?.provider === 'parakeet' || selectedModel?.provider === 'gigaam';
 
   useEffect(() => {
-    if (isParakeetModel && selectedLang !== 'auto') {
+    if (isLanguageFixedModel && selectedLang !== 'auto') {
       setSelectedLang('auto');
     }
-  }, [isParakeetModel, selectedLang]);
+  }, [isLanguageFixedModel, selectedLang]);
 
   const handleSelectFile = async () => {
     const info = await selectFile();
@@ -190,7 +192,7 @@ export function ImportAudioDialog({
     await startImport(
       fileInfo.path,
       title || fileInfo.filename,
-      isParakeetModel ? null : selectedLang === 'auto' ? null : selectedLang,
+      isLanguageFixedModel ? null : selectedLang === 'auto' ? null : selectedLang,
       selectedModel?.name || null,
       selectedModel?.provider || null
     );
@@ -209,6 +211,13 @@ export function ImportAudioDialog({
     if (!newOpen && isProcessing) {
       return;
     }
+    // Grace period: Tauri's native drag-drop emits events (pointer/focus/dismiss)
+    // right after the drop that Radix Dialog misinterprets as a close gesture.
+    // Block any auto-close within 700ms of the dialog opening so the import
+    // dialog stays visible after a drag-and-drop.
+    if (!newOpen && open && Date.now() - openedAtRef.current < 700) {
+      return;
+    }
     onOpenChange(newOpen);
   };
 
@@ -218,8 +227,36 @@ export function ImportAudioDialog({
     }
   };
 
+  // Track when the dialog last transitioned to open. Tauri's native
+  // drag-drop emits a pointer/interact event right after the drop, which
+  // Radix Dialog misinterprets as an outside click and closes the dialog
+  // that was just opened for the import. We suppress outside interactions
+  // for a short grace period after opening to avoid that race.
+  const openedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (open) {
+      openedAtRef.current = Date.now();
+    }
+  }, [open]);
+
   const handleInteractOutside = (event: Event) => {
     if (isProcessing) {
+      event.preventDefault();
+      return;
+    }
+    // Grace period: ignore outside interactions for 600ms after open so the
+    // Tauri drop event doesn't immediately dismiss the dialog.
+    if (open && Date.now() - openedAtRef.current < 600) {
+      event.preventDefault();
+    }
+  };
+
+  const handlePointerDownOutside = (event: Event) => {
+    if (isProcessing) {
+      event.preventDefault();
+      return;
+    }
+    if (open && Date.now() - openedAtRef.current < 600) {
       event.preventDefault();
     }
   };
@@ -230,37 +267,38 @@ export function ImportAudioDialog({
         className="sm:max-w-[500px]"
         onEscapeKeyDown={handleEscapeKeyDown}
         onInteractOutside={handleInteractOutside}
+        onPointerDownOutside={handlePointerDownOutside}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                Importing Audio...
+                Импортируем аудио...
               </>
             ) : error ? (
               <>
                 <AlertCircle className="h-5 w-5 text-red-600" />
-                Import Failed
+                Ошибка импорта
               </>
             ) : status === 'complete' ? (
               <>
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                Import Complete
+                Импорт завершён
               </>
             ) : (
               <>
                 <Upload className="h-5 w-5 text-blue-600" />
-                Import Audio File
+                Импорт аудиофайла
               </>
             )}
           </DialogTitle>
           <DialogDescription>
             {isProcessing
-              ? progress?.message || 'Processing audio...'
+              ? progress?.message || 'Обработка аудио...'
               : error
-              ? 'An error occurred during import'
-              : 'Import an audio file to create a new meeting with transcripts'}
+              ? 'При импорте произошла ошибка'
+              : 'Импортируйте аудиофайл, чтобы создать новую встречу с транскрипцией'}
           </DialogDescription>
         </DialogHeader>
 
@@ -297,7 +335,7 @@ export function ImportAudioDialog({
                         setTitle(e.target.value);
                         setTitleModifiedByUser(true);
                       }}
-                      placeholder="Enter meeting title"
+                      placeholder="Введите название встречи"
                     />
                   </div>
 
@@ -343,15 +381,15 @@ export function ImportAudioDialog({
                   {showAdvanced && (
                     <div className="p-3 pt-0 space-y-4 border-t">
                       {/* Language selector */}
-                      {!isParakeetModel ? (
+                      {!isLanguageFixedModel ? (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Globe className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Language</span>
+                            <span className="text-sm font-medium">Язык</span>
                           </div>
                           <Select value={selectedLang} onValueChange={setSelectedLang}>
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select language" />
+                              <SelectValue placeholder="Выберите язык" />
                             </SelectTrigger>
                             <SelectContent className="max-h-60">
                               {LANGUAGES.map((lang) => (
@@ -366,10 +404,10 @@ export function ImportAudioDialog({
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Globe className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Language</span>
+                            <span className="text-sm font-medium">Язык</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Language selection isn't supported for Parakeet. It always uses automatic detection.
+                            Language selection isn't supported for this model. It always uses its built-in language (Parakeet = English, GigaAM = Russian).
                           </p>
                         </div>
                       )}
@@ -387,7 +425,7 @@ export function ImportAudioDialog({
                             disabled={loadingModels}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder={loadingModels ? 'Loading models...' : 'Select model'} />
+                              <SelectValue placeholder={loadingModels ? 'Загрузка моделей...' : 'Выберите модель'} />
                             </SelectTrigger>
                             <SelectContent>
                               {availableModels.map((model) => (
@@ -440,7 +478,7 @@ export function ImportAudioDialog({
           {!isProcessing && !error && (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                Отмена
               </Button>
               <Button
                 onClick={handleStartImport}
@@ -448,23 +486,23 @@ export function ImportAudioDialog({
                 disabled={!fileInfo}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Import
+                Импортировать
               </Button>
             </>
           )}
           {isProcessing && (
             <Button variant="outline" onClick={handleCancel}>
               <X className="h-4 w-4 mr-2" />
-              Cancel
+              Отмена
             </Button>
           )}
           {error && (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
+                Закрыть
               </Button>
               <Button onClick={reset} variant="outline">
-                Try Again
+                Повторить
               </Button>
             </>
           )}

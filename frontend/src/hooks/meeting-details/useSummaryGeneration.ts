@@ -82,15 +82,15 @@ export function useSummaryGeneration({
   const getSummaryStatusMessage = useCallback((status: SummaryStatus) => {
     switch (status) {
       case 'processing':
-        return 'Processing transcript...';
+        return 'Обработка транскрипции...';
       case 'summarizing':
-        return 'Generating summary...';
+        return 'Генерация резюме...';
       case 'regenerating':
-        return 'Regenerating summary...';
+        return 'Перегенерация резюме...';
       case 'completed':
-        return 'Summary completed';
+        return 'Резюме готово';
       case 'error':
-        return 'Error generating summary';
+        return 'Ошибка генерации резюме';
       default:
         return '';
     }

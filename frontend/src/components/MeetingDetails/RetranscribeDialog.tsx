@@ -92,13 +92,15 @@ export function RetranscribeDialog({
     const name = selectedModelKey.slice(colonIndex + 1);
     return availableModels.find(m => m.provider === provider && m.name === name);
   }, [selectedModelKey, availableModels]);
-  const isParakeetModel = selectedModelDetails?.provider === 'parakeet';
+  // Language-fixed providers (Parakeet = English, GigaAM = Russian): no
+  // manual language selection, force auto.
+  const isLanguageFixedModel = selectedModelDetails?.provider === 'parakeet' || selectedModelDetails?.provider === 'gigaam';
 
   useEffect(() => {
-    if (isParakeetModel && selectedLang !== 'auto') {
+    if (isLanguageFixedModel && selectedLang !== 'auto') {
       setSelectedLang('auto');
     }
-  }, [isParakeetModel, selectedLang]);
+  }, [isLanguageFixedModel, selectedLang]);
 
   // Reset state only when dialog transitions from closed to open
   // This prevents re-initialization when config changes while dialog is already open
@@ -207,9 +209,9 @@ export function RetranscribeDialog({
     setProgress(null);
 
     try {
-      const languageToSend = isParakeetModel ? null : selectedLang === 'auto' ? null : selectedLang;
+      const languageToSend = isLanguageFixedModel ? null : selectedLang === 'auto' ? null : selectedLang;
       await Analytics.track('enhance_transcript_started', {
-        language: isParakeetModel ? 'auto' : (selectedLang === 'auto' ? 'auto' : selectedLang),
+        language: isLanguageFixedModel ? 'auto' : (selectedLang === 'auto' ? 'auto' : selectedLang),
         model_provider: selectedModelDetails?.provider || '',
         model_name: selectedModelDetails?.name || ''
       });
@@ -301,7 +303,7 @@ export function RetranscribeDialog({
 
         <div className="space-y-4 py-4">
           {!isProcessing && !error && (
-            !isParakeetModel ? (
+            !isLanguageFixedModel ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-muted-foreground" />
@@ -330,7 +332,7 @@ export function RetranscribeDialog({
                   <span className="text-sm font-medium">Language</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Language selection isn't supported for Parakeet. It always uses automatic detection.
+                  Language selection isn't supported for this model. It always uses its built-in language (Parakeet = English, GigaAM = Russian).
                 </p>
               </div>
             )

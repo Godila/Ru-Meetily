@@ -19,11 +19,12 @@ export function SummaryLanguageSettings() {
     <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm relative">
       <div className="flex items-center gap-2 mb-2">
         <Globe size={18} className="text-gray-500" />
-        <h3 className="text-lg font-semibold text-gray-900">Summary Language</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Язык резюме</h3>
       </div>
       <p className="text-sm text-gray-600 mb-4">
-        Pin one language as the default for new meetings. Unpinned languages remain as
-        quick-switch options in the summary generator. Auto uses the dominant transcript language.
+        Закрепите один язык как язык по умолчанию для новых встреч. Незакреплённые языки
+        остаются вариантами быстрого переключения в генераторе резюме. «Авто» определяет
+        язык по преобладающему языку транскрипции.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -40,9 +41,9 @@ export function SummaryLanguageSettings() {
             >
               <button
                 type="button"
-                aria-label={isPinned ? `Unpin ${labelForCode(code)} as default` : `Pin ${labelForCode(code)} as default`}
+                aria-label={isPinned ? `Открепить ${labelForCode(code)} как язык по умолчанию` : `Закрепить ${labelForCode(code)} как язык по умолчанию`}
                 aria-pressed={isPinned}
-                title={isPinned ? 'Click to unset as default' : 'Click to set as default'}
+                title={isPinned ? 'Нажмите, чтобы открепить' : 'Нажмите, чтобы закрепить по умолчанию'}
                 onClick={() => togglePin(code)}
                 className={`flex items-center gap-1.5 pl-3 pr-2 py-1 hover:brightness-95 active:brightness-90 ${
                   isPinned ? 'text-blue-800' : 'text-gray-800'
@@ -74,7 +75,7 @@ export function SummaryLanguageSettings() {
               disabled={recents.length >= 5}
               className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-3 py-1 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ＋ Add language
+              ＋ Добавить язык
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0 border-0 shadow-none bg-transparent">
@@ -93,8 +94,8 @@ export function SummaryLanguageSettings() {
 
       <p className="text-xs text-gray-400 mt-3">
         {pinned
-          ? `Default: ${labelForCode(pinned)} - click it again to unset. Max 5 quick-switch options.`
-          : 'Click any language to set it as your default. Max 5 quick-switch options.'}
+          ? `По умолчанию: ${labelForCode(pinned)} — нажмите ещё раз, чтобы открепить. Максимум 5 вариантов быстрого переключения.`
+          : 'Нажмите на любой язык, чтобы сделать его языком по умолчанию. Максимум 5 вариантов быстрого переключения.'}
       </p>
     </div>
   );

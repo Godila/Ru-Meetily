@@ -41,16 +41,18 @@ default = ["platform-default"]  # Automatically enables best backend per platfor
 # Platform-appropriate defaults - see target-specific dependencies below
 platform-default = []
 
-# Manual GPU acceleration options (for power users to override defaults)
-metal = ["whisper-rs/metal"]       # macOS: Apple Metal GPU (Auto-enabled on macOS)
-coreml = ["whisper-rs/coreml"]     # macOS: Apple CoreML acceleration
-cuda = ["whisper-rs/cuda"]         # Windows/Linux: NVIDIA CUDA GPU
-vulkan = ["whisper-rs/vulkan"]     # Windows/Linux: AMD/Intel Vulkan GPU
-hipblas = ["whisper-rs/hipblas"]   # Linux: AMD ROCm HIP
-
-# CPU optimizations (fallback for systems without GPU)
-openblas = ["whisper-rs/openblas"] # Optimized BLAS (Auto-enabled on Windows/Linux)
-openmp = ["whisper-rs/openmp"]     # OpenMP parallel processing
+# NOTE: The whisper-rs engine has been stubbed out in this build (whisper-rs is
+# incompatible with libclang 22 on the build machine). GPU/BLAS feature flags
+# that previously forwarded to whisper-rs are therefore no-ops retained here
+# for CLI/build-script compatibility. STT is provided by GigaAM (Russian) and
+# Parakeet (English) via ONNX Runtime, neither of which needs these flags.
+metal = []
+coreml = []
+cuda = []
+vulkan = []
+hipblas = []
+openblas = []
+openmp = []
 
 [build-dependencies]
 tauri-build = { version = "2.3.0", features = [] }
@@ -173,29 +175,14 @@ cidre = { git = "https://github.com/yury/cidre", rev = "a9587fa", features = ["a
 dasp = "0.11.0"
 futures-channel = "0.3.31"
 
-# PERFORMANCE: Enable Metal GPU + CoreML acceleration automatically on macOS
-# CoreML provides additional acceleration for Apple Silicon chips
-whisper-rs = { version = "0.13.2", features = ["raw-api", "metal", "coreml"] }
+# (whisper-rs removed: whisper engine is stubbed in this build; STT via GigaAM/Parakeet)
 
 # Windows-specific dependencies
-# Default: CPU-only build (no BLAS)
-# Users can enable features manually:
-#   --features cuda     (NVIDIA GPUs)
-#   --features vulkan   (AMD/Intel GPUs)
-#   --features openblas (OpenBLAS optimization, requires BLAS_INCLUDE_DIRS)
 [target.'cfg(target_os = "windows")'.dependencies]
-whisper-rs = { version = "0.13.2", features = ["raw-api"] }
 futures-channel = "0.3.31"
 
 # Linux-specific dependencies
-# Default: CPU-only build (no BLAS)
-# Users can enable features manually:
-#   --features cuda     (NVIDIA GPUs)
-#   --features vulkan   (AMD/Intel GPUs)
-#   --features hipblas  (AMD ROCm)
-#   --features openblas (OpenBLAS optimization, requires BLAS_INCLUDE_DIRS)
 [target.'cfg(target_os = "linux")'.dependencies]
-whisper-rs = { version = "0.13.2", features = ["raw-api"] }
 futures-channel = "0.3.31"
 
 [dev-dependencies]

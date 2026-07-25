@@ -30,12 +30,12 @@ export function SetupOverviewStep() {
     {
       number: 1,
       type: 'transcription',
-      title: 'Download Transcription Engine',
+      title: 'Скачать движок транскрипции',
     },
     {
       number: 2,
       type: 'summarization',
-      title: 'Download Summarization Engine',
+      title: 'Скачать движок суммаризации',
     },
   ];
 
@@ -45,8 +45,8 @@ export function SetupOverviewStep() {
 
   return (
     <OnboardingContainer
-      title="Setup Overview"
-      description="Meetily requires that you download the Transcription & Summarization AI models for the software to work."
+      title="Обзор настройки"
+      description="Для работы Meetily необходимо загрузить модели транскрипции и суммаризации."
       step={2}
       totalSteps={isMac ? 4 : 3}
     >
@@ -62,7 +62,7 @@ export function SetupOverviewStep() {
                 >
                   <div className="flex-1 ml-1">
                     <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                        Step {step.number} :  {step.title}
+                        Шаг {step.number} :  {step.title}
 
                         {step.type === "summarization" && (
                             <TooltipProvider>
@@ -73,8 +73,8 @@ export function SetupOverviewStep() {
                                 </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs text-sm">
-                                You can also select external AI providers like OpenAI, Claude, or
-                                Ollama for summary generation in settings.
+                                Также в настройках можно выбрать внешние AI-провайдеры
+                                для генерации резюме: OpenAI, Claude или Ollama.
                                 </TooltipContent>
                             </Tooltip>
                             </TooltipProvider>
@@ -94,7 +94,7 @@ export function SetupOverviewStep() {
             onClick={handleContinue}
             className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white"
           >
-            Let's Go
+            Поехали
           </Button>
           <div className="text-center">
             <a
@@ -103,7 +103,7 @@ export function SetupOverviewStep() {
               rel="noopener noreferrer"
               className="text-xs text-gray-600 hover:underline"
             >
-              Report issues on GitHub
+              Сообщить о проблемах на GitHub
             </a>
           </div>
         </div>

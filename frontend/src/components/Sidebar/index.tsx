@@ -337,13 +337,13 @@ const Sidebar: React.FC = () => {
       Analytics.trackMeetingDeleted(itemId);
 
       // Show success toast
-      toast.success("Meeting deleted successfully", {
+      toast.success("Встреча удалена", {
         description: "All associated data has been removed"
       });
 
       // If deleting the active meeting, navigate to home
       if (currentMeeting?.id === itemId) {
-        setCurrentMeeting({ id: 'intro-call', title: '+ New Call' });
+        setCurrentMeeting({ id: 'intro-call', title: '+ Новая встреча' });
         router.push('/');
       }
     } catch (error) {
@@ -379,7 +379,7 @@ const Sidebar: React.FC = () => {
 
     // Prevent empty titles
     if (!newTitle) {
-      toast.error("Meeting title cannot be empty");
+      toast.error("Название встречи не может быть пустым");
       return;
     }
 
@@ -403,7 +403,7 @@ const Sidebar: React.FC = () => {
       // Track the edit
       Analytics.trackButtonClick('edit_meeting_title', 'sidebar');
 
-      toast.success("Meeting title updated successfully");
+      toast.success("Название встречи обновлено");
 
       // Close modal and reset state
       setEditModalState({ isOpen: false, meetingId: null, currentTitle: '' });
@@ -467,7 +467,7 @@ const Sidebar: React.FC = () => {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>Home</p>
+              <p>Главная</p>
             </TooltipContent>
           </Tooltip>
 
@@ -486,7 +486,7 @@ const Sidebar: React.FC = () => {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>{isRecording ? "Recording in progress..." : "Start Recording"}</p>
+              <p>{isRecording ? "Идёт запись..." : "Начать запись"}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -501,7 +501,7 @@ const Sidebar: React.FC = () => {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p>Import Audio</p>
+                <p>Импорт аудио</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -520,7 +520,7 @@ const Sidebar: React.FC = () => {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>Meeting Notes</p>
+              <p>Заметки встреч</p>
             </TooltipContent>
           </Tooltip>
 
@@ -535,7 +535,7 @@ const Sidebar: React.FC = () => {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>Settings</p>
+              <p>Настройки</p>
             </TooltipContent>
           </Tooltip>
 
@@ -600,7 +600,7 @@ const Sidebar: React.FC = () => {
                 )}
               </div>
               {searchQuery && item.id === 'meetings' && isSearching && (
-                <span className="ml-2 text-xs text-blue-500 animate-pulse">Searching...</span>
+                <span className="ml-2 text-xs text-blue-500 animate-pulse">Поиск...</span>
               )}
             </>
           ) : (
@@ -696,7 +696,7 @@ const Sidebar: React.FC = () => {
 
                 <div className="relative mb-1">
                   <InputGroup >
-                    <InputGroupInput placeholder='Search meeting content...' value={searchQuery}
+                    <InputGroupInput placeholder='Поиск по содержимому встреч...' value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                     />
                     <InputGroupAddon>
@@ -728,7 +728,7 @@ const Sidebar: React.FC = () => {
                 className="p-3  text-lg font-semibold items-center hover:bg-gray-100 h-10   flex mx-3 mt-3 rounded-lg cursor-pointer"
               >
                 <Home className="w-4 h-4 mr-2" />
-                <span>Home</span>
+                <span>Главная</span>
               </div>
             )}
           </div>
@@ -747,7 +747,7 @@ const Sidebar: React.FC = () => {
                       <NotebookPen className="w-4 h-4 mr-2 text-gray-600" />
                       <span className="text-gray-700">{item.title}</span>
                       {searchQuery && item.id === 'meetings' && isSearching && (
-                        <span className="ml-2 text-xs text-blue-500 animate-pulse">Searching...</span>
+                        <span className="ml-2 text-xs text-blue-500 animate-pulse">Поиск...</span>
                       )}
                     </div>
                   </div>
@@ -782,12 +782,12 @@ const Sidebar: React.FC = () => {
               {isRecording ? (
                 <>
                   <Square className="w-4 h-4 mr-2" />
-                  <span>Recording in progress...</span>
+                  <span>Идёт запись...</span>
                 </>
               ) : (
                 <>
                   <Mic className="w-4 h-4 mr-2" />
-                  <span>Start Recording</span>
+                  <span>Начать запись</span>
                 </>
               )}
             </button>
@@ -798,7 +798,7 @@ const Sidebar: React.FC = () => {
                 className="w-full flex items-center justify-center px-3 py-2 mt-1 text-sm font-medium text-gray-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors shadow-sm"
               >
                 <Upload className="w-4 h-4 mr-2" />
-                <span>Import Audio</span>
+                <span>Импорт аудио</span>
               </button>
             )}
 
@@ -807,7 +807,7 @@ const Sidebar: React.FC = () => {
               className="w-full flex items-center justify-center px-3 py-1.5 mt-1 mb-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors shadow-sm"
             >
               <Settings className="w-4 h-4 mr-2" />
-              <span>Settings</span>
+              <span>Настройки</span>
             </button>
             <Info isCollapsed={isCollapsed} />
             <div className="w-full flex items-center justify-center px-3 py-1 text-xs text-gray-400">
@@ -853,7 +853,7 @@ const Sidebar: React.FC = () => {
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter meeting title"
+                  placeholder="Введите название встречи"
                   autoFocus
                 />
               </div>

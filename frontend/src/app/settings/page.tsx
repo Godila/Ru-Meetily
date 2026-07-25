@@ -15,11 +15,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 // Tabs configuration (constant)
 const TABS = [
-  { value: 'general', label: 'General', icon: Settings2 },
-  { value: 'recording', label: 'Recordings', icon: Mic },
-  { value: 'Transcriptionmodels', label: 'Transcription', icon: DatabaseIcon },
-  { value: 'summaryModels', label: 'Summary', icon: SparkleIcon },
-  { value: 'beta', label: 'Beta', icon: FlaskConical }
+  { value: 'general', label: 'Основные', icon: Settings2 },
+  { value: 'recording', label: 'Запись', icon: Mic },
+  { value: 'Transcriptionmodels', label: 'Транскрипция', icon: DatabaseIcon },
+  { value: 'summaryModels', label: 'Резюме', icon: SparkleIcon },
+  { value: 'beta', label: 'Бета', icon: FlaskConical }
 ] as const;
 
 export default function SettingsPage() {
@@ -39,8 +39,8 @@ export default function SettingsPage() {
         if (config) {
           console.log('Loaded saved transcript config:', config);
           setTranscriptModelConfig({
-            provider: config.provider || 'localWhisper',
-            model: config.model || 'large-v3',
+            provider: config.provider || 'gigaam',
+            model: config.model || 'gigaam-v3-rnnt-int8',
             apiKey: config.apiKey || null
           });
         }
@@ -73,9 +73,9 @@ export default function SettingsPage() {
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back</span>
+              <span>Назад</span>
             </button>
-            <h1 className="text-3xl font-bold">Settings</h1>
+            <h1 className="text-3xl font-bold">Настройки</h1>
           </div>
         </div>
       </div>

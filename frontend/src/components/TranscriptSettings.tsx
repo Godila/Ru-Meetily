@@ -7,10 +7,11 @@ import { Label } from './ui/label';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { ModelManager } from './WhisperModelManager';
 import { ParakeetModelManager } from './ParakeetModelManager';
+import { GigaAMModelManager } from './GigaAMModelManager';
 
 
 export interface TranscriptModelProps {
-    provider: 'localWhisper' | 'parakeet' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai';
+    provider: 'localWhisper' | 'parakeet' | 'gigaam' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai';
     model: string;
     apiKey?: string | null;
 }
@@ -34,7 +35,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
     }, [transcriptModelConfig.provider]);
 
     useEffect(() => {
-        if (transcriptModelConfig.provider === 'localWhisper' || transcriptModelConfig.provider === 'parakeet') {
+        if (transcriptModelConfig.provider === 'localWhisper' || transcriptModelConfig.provider === 'parakeet' || transcriptModelConfig.provider === 'gigaam') {
             setApiKey(null);
         }
     }, [transcriptModelConfig.provider]);
@@ -95,6 +96,17 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
         }
     };
 
+    const handleGigaamModelSelect = (modelName: string) => {
+        setTranscriptModelConfig({
+            ...transcriptModelConfig,
+            provider: 'gigaam',
+            model: modelName
+        });
+        if (onModelSelect) {
+            onModelSelect();
+        }
+    };
+
     return (
         <div>
             <div>
@@ -104,7 +116,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                 <div className="space-y-4 pb-6">
                     <div>
                         <Label className="block text-sm font-medium text-gray-700 mb-1">
-                            Transcript Model
+                            Модель транскрипции
                         </Label>
                         <div className="flex space-x-2 mx-1">
                             <Select
@@ -112,25 +124,22 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                                 onValueChange={(value) => {
                                     const provider = value as TranscriptModelProps['provider'];
                                     setUiProvider(provider);
-                                    if (provider !== 'localWhisper' && provider !== 'parakeet') {
+                                    if (provider !== 'localWhisper' && provider !== 'parakeet' && provider !== 'gigaam') {
                                         fetchApiKey(provider);
                                     }
                                 }}
                             >
                                 <SelectTrigger className='focus:ring-1 focus:ring-blue-500 focus:border-blue-500'>
-                                    <SelectValue placeholder="Select provider" />
+                                    <SelectValue placeholder="Выберите провайдера" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="parakeet">⚡ Parakeet (Recommended - Real-time / Accurate)</SelectItem>
-                                    <SelectItem value="localWhisper">🏠 Local Whisper (High Accuracy)</SelectItem>
-                                    {/* <SelectItem value="deepgram">☁️ Deepgram (Backup)</SelectItem>
-                                    <SelectItem value="elevenLabs">☁️ ElevenLabs</SelectItem>
-                                    <SelectItem value="groq">☁️ Groq</SelectItem>
-                                    <SelectItem value="openai">☁️ OpenAI</SelectItem> */}
+                                    <SelectItem value="gigaam">🇷🇺 GigaAM (Лучшее распознавание русского)</SelectItem>
+                                    <SelectItem value="parakeet">⚡ Parakeet (English - Real-time / Accurate)</SelectItem>
+                                    {/* Whisper engine is stubbed out in this build (whisper-rs incompatible with the toolchain). */}
                                 </SelectContent>
                             </Select>
 
-                            {uiProvider !== 'localWhisper' && uiProvider !== 'parakeet' && (
+                            {uiProvider !== 'localWhisper' && uiProvider !== 'parakeet' && uiProvider !== 'gigaam' && (
                                 <Select
                                     value={transcriptModelConfig.model}
                                     onValueChange={(value) => {
@@ -172,6 +181,16 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                         </div>
                     )}
 
+                    {uiProvider === 'gigaam' && (
+                        <div className="mt-6">
+                            <GigaAMModelManager
+                                selectedModel={transcriptModelConfig.provider === 'gigaam' ? transcriptModelConfig.model : undefined}
+                                onModelSelect={handleGigaamModelSelect}
+                                autoSave={true}
+                            />
+                        </div>
+                    )}
+
 
                     {requiresApiKey && (
                         <div>
@@ -187,7 +206,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                                     onChange={(e) => setApiKey(e.target.value)}
                                     disabled={isApiKeyLocked}
                                     onClick={handleInputClick}
-                                    placeholder="Enter your API key"
+                                    placeholder="Введите ваш API-ключ"
                                 />
                                 {isApiKeyLocked && (
                                     <div

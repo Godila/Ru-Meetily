@@ -113,8 +113,8 @@ export function PermissionsStep() {
 
   return (
     <OnboardingContainer
-      title="Grant Permissions"
-      description="Meetily needs access to your microphone and system audio to record meetings"
+      title="Предоставление разрешений"
+      description="Meetly нужен доступ к микрофону и системному звуку для записи встреч"
       step={4}
       hideProgress={true}
       showNavigation={allPermissionsGranted}
@@ -126,8 +126,8 @@ export function PermissionsStep() {
           {/* Microphone */}
           <PermissionRow
             icon={<Mic className="w-5 h-5" />}
-            title="Microphone"
-            description="Required to capture your voice during meetings"
+            title="Микрофон"
+            description="Необходим для захвата вашего голоса во время встреч"
             status={permissions.microphone}
             isPending={isPending}
             onAction={handleMicrophoneAction}
@@ -136,8 +136,8 @@ export function PermissionsStep() {
           {/* System Audio */}
           <PermissionRow
             icon={<Volume2 className="w-5 h-5" />}
-            title="System Audio"
-            description="Click Enable to grant Audio Capture permission"
+            title="Системный звук"
+            description="Нажмите «Разрешить» для доступа к захвату системного звука"
             status={permissions.systemAudio}
             isPending={isPending}
             onAction={handleSystemAudioAction}
@@ -147,19 +147,19 @@ export function PermissionsStep() {
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 pt-4">
           <Button onClick={handleFinish} disabled={!allPermissionsGranted} className="w-full h-11">
-            Finish Setup
+            Завершить настройку
           </Button>
 
           <button
             onClick={handleSkip}
             className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
           >
-            I'll do this later
+            Сделаю это позже
           </button>
 
           {!allPermissionsGranted && (
             <p className="text-xs text-center text-muted-foreground">
-              Recording won't work without permissions. You can grant them later in settings.
+              Без разрешений запись работать не будет. Их можно предоставить позже в настройках.
             </p>
           )}
         </div>

@@ -496,7 +496,7 @@ export function ModelSettingsModal({
     } catch (err) {
       console.error('Error loading OpenRouter models:', err);
       setOpenRouterError(
-        err instanceof Error ? err.message : 'Failed to load OpenRouter models'
+        err instanceof Error ? err.message : 'Не удалось загрузить модели OpenRouter'
       );
     } finally {
       setIsLoadingOpenRouter(false);
@@ -519,7 +519,7 @@ export function ModelSettingsModal({
       }
     } catch (err) {
       console.error('Error loading Built-in AI models:', err);
-      toast.error('Failed to load Built-in AI models');
+      toast.error('Не удалось загрузить встроенные AI-модели');
     }
   };
 
@@ -629,7 +629,7 @@ export function ModelSettingsModal({
         console.log('Custom OpenAI config saved successfully');
       } catch (err) {
         console.error('Failed to save custom OpenAI config:', err);
-        toast.error('Failed to save custom OpenAI configuration');
+        toast.error('Не удалось сохранить конфигурацию custom OpenAI');
         return;
       }
     }
@@ -671,7 +671,7 @@ export function ModelSettingsModal({
   // Test custom OpenAI connection
   const testCustomOpenAIConnection = async () => {
     if (!customOpenAIEndpoint.trim() || !customOpenAIModel.trim()) {
-      toast.error('Please enter endpoint URL and model name first');
+      toast.error('Сначала введите URL эндпоинта и название модели');
       return;
     }
 
@@ -731,11 +731,11 @@ export function ModelSettingsModal({
 
       // Check if Ollama is not installed and show appropriate error
       if (isOllamaNotInstalledError(errorMsg)) {
-        toast.error('Ollama is not installed', {
-          description: 'Please download and install Ollama before downloading models.',
+        toast.error('Ollama не установлен', {
+          description: 'Сначала скачайте и установите Ollama перед загрузкой моделей.',
           duration: 7000,
           action: {
-            label: 'Download',
+            label: 'Скачать',
             onClick: () => invoke('open_external_url', { url: 'https://ollama.com/download' })
           }
         });
@@ -809,7 +809,7 @@ export function ModelSettingsModal({
 
       <div className="space-y-4">
         <div>
-          <Label>Summarization Model</Label>
+          <Label>Модель суммаризации</Label>
           <div className="flex space-x-2 mt-1">
             <Select
               value={modelConfig.provider}
@@ -871,12 +871,12 @@ export function ModelSettingsModal({
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select provider" />
+                <SelectValue placeholder="Выберите провайдера" />
               </SelectTrigger>
               <SelectContent className="max-h-64 overflow-y-auto">
-                <SelectItem value="builtin-ai">Built-in AI (Offline, No API needed)</SelectItem>
+                <SelectItem value="builtin-ai">Встроенный ИИ (офлайн, без API)</SelectItem>
                 <SelectItem value="claude">Claude</SelectItem>
-                <SelectItem value="custom-openai">Custom Server (OpenAI)</SelectItem>
+                <SelectItem value="custom-openai">Свой сервер (OpenAI)</SelectItem>
                 <SelectItem value="groq">Groq</SelectItem>
                 <SelectItem value="ollama">Ollama</SelectItem>
                 <SelectItem value="openai">OpenAI</SelectItem>
@@ -894,14 +894,14 @@ export function ModelSettingsModal({
                     className="flex-1 max-w-[200px] justify-between font-normal"
                   >
                     <span className="truncate">
-                      {modelConfig.model || "Select model..."}
+                      {modelConfig.model || "Выберите модель..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[250px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search models..." />
+                    <CommandInput placeholder="Поиск моделей..." />
                     <CommandList className="max-h-[300px]">
                       {(modelConfig.provider === 'openrouter' && isLoadingOpenRouter) ||
                        (modelConfig.provider === 'openai' && isLoadingOpenAI) ||
@@ -913,7 +913,7 @@ export function ModelSettingsModal({
                         </div>
                       ) : (
                         <>
-                          <CommandEmpty>No models found.</CommandEmpty>
+                          <CommandEmpty>Модели не найдены.</CommandEmpty>
                           <CommandGroup>
                             {modelOptions[modelConfig.provider]?.map((model) => (
                               <CommandItem
@@ -948,7 +948,7 @@ export function ModelSettingsModal({
         {modelConfig.provider === 'custom-openai' && (
           <div className="space-y-4 border-t pt-4">
             <div>
-              <Label htmlFor="custom-endpoint">Endpoint URL *</Label>
+              <Label htmlFor="custom-endpoint">URL эндпоинта *</Label>
               <Input
                 id="custom-endpoint"
                 value={customOpenAIEndpoint}
@@ -962,7 +962,7 @@ export function ModelSettingsModal({
             </div>
 
             <div>
-              <Label htmlFor="custom-model">Model Name *</Label>
+              <Label htmlFor="custom-model">Название модели *</Label>
               <Input
                 id="custom-model"
                 value={customOpenAIModel}
@@ -976,13 +976,13 @@ export function ModelSettingsModal({
             </div>
 
             <div>
-              <Label htmlFor="custom-api-key">API Key (optional)</Label>
+              <Label htmlFor="custom-api-key">API-ключ (необязательно)</Label>
               <Input
                 id="custom-api-key"
                 type="password"
                 value={customOpenAIApiKey}
                 onChange={(e) => setCustomOpenAIApiKey(e.target.value)}
-                placeholder="Leave empty if not required"
+                placeholder="Оставьте пустым, если не требуется"
                 className="mt-1"
               />
             </div>
@@ -1004,7 +1004,7 @@ export function ModelSettingsModal({
               {isCustomOpenAIAdvancedOpen && (
                 <div className="space-y-3 pl-2 border-l-2 border-muted mt-2">
                   <div>
-                    <Label htmlFor="custom-max-tokens">Max Tokens</Label>
+                    <Label htmlFor="custom-max-tokens">Макс. токенов</Label>
                     <Input
                       id="custom-max-tokens"
                       type="number"
@@ -1015,7 +1015,7 @@ export function ModelSettingsModal({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="custom-temperature">Temperature (0.0-2.0)</Label>
+                    <Label htmlFor="custom-temperature">Температура (0.0-2.0)</Label>
                     <Input
                       id="custom-temperature"
                       type="number"
@@ -1072,14 +1072,14 @@ export function ModelSettingsModal({
 
         {requiresApiKey && (
           <div>
-            <Label>API Key</Label>
+            <Label>API-ключ</Label>
             <div className="relative mt-1">
               <Input
                 type={showApiKey ? 'text' : 'password'}
                 value={apiKey || ''}
                 onChange={(e) => setApiKey(e.target.value)}
                 disabled={isApiKeyLocked}
-                placeholder="Enter your API key"
+                placeholder="Введите ваш API-ключ"
                 className="pr-24"
               />
               {isApiKeyLocked && apiKey?.trim() && (
@@ -1096,7 +1096,7 @@ export function ModelSettingsModal({
                     size="icon"
                     onClick={() => setIsApiKeyLocked(!isApiKeyLocked)}
                     className={isLockButtonVibrating ? 'animate-vibrate text-red-500' : ''}
-                    title={isApiKeyLocked ? 'Unlock to edit' : 'Lock to prevent editing'}
+                    title={isApiKeyLocked ? 'Разблокировать для редактирования' : 'Заблокировать от изменений'}
                   >
                     {isApiKeyLocked ? <Lock /> : <Unlock />}
                   </Button>
@@ -1170,12 +1170,12 @@ export function ModelSettingsModal({
                     {isLoadingOllama ? (
                       <>
                         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Fetching...
+                        Загрузка...
                       </>
                     ) : (
                       <>
                         <RefreshCw className="mr-2 h-4 w-4" />
-                        Fetch Models
+                        Загрузить модели
                       </>
                     )}
                   </Button>
@@ -1183,7 +1183,7 @@ export function ModelSettingsModal({
                 {ollamaEndpointChanged && !error && (
                   <Alert className="mt-3 border-yellow-500 bg-yellow-50">
                     <AlertDescription className="text-yellow-800">
-                      Endpoint changed. Please click "Fetch Models" to load models from the new endpoint before saving.
+                      Endpoint changed. Please click "Загрузить модели" to load models from the new endpoint before saving.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1208,7 +1208,7 @@ export function ModelSettingsModal({
             {models.length > 0 && (
               <div className="mb-4">
                 <Input
-                  placeholder="Search models..."
+                  placeholder="Поиск моделей..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full"
@@ -1240,7 +1240,7 @@ export function ModelSettingsModal({
                       Download Ollama
                     </Button>
                     <div className="text-sm text-muted-foreground text-center">
-                      After installing Ollama, restart this application and click "Fetch Models" to continue.
+                      After installing Ollama, restart this application and click "Загрузить модели" to continue.
                     </div>
                   </div>
                 ) : (
@@ -1249,8 +1249,8 @@ export function ModelSettingsModal({
                     <Alert className="mb-4">
                       <AlertDescription>
                         {ollamaEndpointChanged
-                          ? 'Endpoint changed. Click "Fetch Models" to load models from the new endpoint.'
-                          : 'No models found. Download a recommended model or click "Fetch Models" to load available Ollama models.'}
+                          ? 'Endpoint changed. Click "Загрузить модели" to load models from the new endpoint.'
+                          : 'No models found. Download a recommended model or click "Загрузить модели" to load available Ollama models.'}
                       </AlertDescription>
                     </Alert>
                     {!ollamaEndpointChanged && (
@@ -1265,12 +1265,12 @@ export function ModelSettingsModal({
                           {isDownloading('gemma3:1b') ? (
                             <>
                               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                              Downloading gemma3:1b...
+                              Загрузка gemma3:1b...
                             </>
                           ) : (
                             <>
                               <Download className="mr-2 h-4 w-4" />
-                              Download gemma3:1b (Recommended, ~800MB)
+                              Скачать gemma3:1b (рекомендуется, ~800 МБ)
                             </>
                           )}
                         </Button>
@@ -1279,7 +1279,7 @@ export function ModelSettingsModal({
                         {isDownloading('gemma3:1b') && getProgress('gemma3:1b') !== undefined && (
                           <div className="bg-white rounded-md border p-3">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-blue-600">Downloading gemma3:1b</span>
+                              <span className="text-sm font-medium text-blue-600">Загрузка gemma3:1b...</span>
                               <span className="text-sm font-semibold text-blue-600">
                                 {Math.round(getProgress('gemma3:1b')!)}%
                               </span>
@@ -1400,7 +1400,7 @@ export function ModelSettingsModal({
           onClick={handleSave}
           disabled={isDoneDisabled}
         >
-          Save
+          Сохранить
         </Button>
       </div>
     </div>

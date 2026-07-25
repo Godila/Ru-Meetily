@@ -8,17 +8,21 @@ static ANALYTICS_CLIENT: std::sync::Mutex<Option<Arc<AnalyticsClient>>> = std::s
 
 #[command]
 pub async fn init_analytics() -> Result<(), String> {
+    // Analytics is disabled by default in this build. The client is created
+    // with enabled=false so that even if init is invoked, no events are sent
+    // to PostHog. Enablement requires explicit opt-in (which the UI toggle
+    // for has been removed in this build).
     let config = AnalyticsConfig {
         api_key: "phc_Aa9PqeCkDkVbtbRsYjtmHANBfcscjCVupxZwrtL5vZ77".to_string(),
         host: Some("https://us.i.posthog.com".to_string()),
-        enabled: true,
+        enabled: false,
     };
-    
+
     let client = Arc::new(AnalyticsClient::new(config).await);
-    
+
     let mut guard = ANALYTICS_CLIENT.lock().unwrap();
     *guard = Some(client);
-    
+
     Ok(())
 }
 

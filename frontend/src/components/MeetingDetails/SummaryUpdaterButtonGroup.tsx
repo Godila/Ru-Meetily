@@ -31,7 +31,7 @@ export function SummaryUpdaterButtonGroup({
         variant="outline"
         size="sm"
         className={`${isDirty ? 'bg-green-200' : ""}`}
-        title={isSaving ? "Saving" : "Save Changes"}
+        title={isSaving ? "Сохранение" : "Сохранить изменения"}
         onClick={() => {
           Analytics.trackButtonClick('save_changes', 'meeting_details');
           onSave();
@@ -55,7 +55,7 @@ export function SummaryUpdaterButtonGroup({
       <Button
         variant="outline"
         size="sm"
-        title="Copy Summary"
+        title="Копировать резюме"
         onClick={() => {
           Analytics.trackButtonClick('copy_summary', 'meeting_details');
           onCopy();
@@ -72,7 +72,7 @@ export function SummaryUpdaterButtonGroup({
         <Button
           variant="outline"
           size="sm"
-          title="Find in Summary"
+          title="Найти в резюме"
           onClick={() => {
             Analytics.trackButtonClick('find_in_summary', 'meeting_details');
             onFind();

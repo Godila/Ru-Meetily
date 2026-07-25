@@ -127,8 +127,8 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Auto Summary</h3>
-            <p className="text-sm text-gray-600">Auto Generating summary after meeting completion(Stopping)</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Авто-резюме</h3>
+            <p className="text-sm text-gray-600">Автоматически генерировать резюме после завершения встречи (остановки записи)</p>
           </div>
           <Switch checked={isAutoSummary} onCheckedChange={toggleIsAutoSummary} />
         </div>
@@ -137,9 +137,9 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
       <SummaryLanguageSettings />
 
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4">Summary Model Configuration</h3>
+        <h3 className="text-lg font-semibold mb-4">Настройка модели резюме</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Configure the AI model used for generating meeting summaries.
+          Настройте AI-модель, используемую для генерации резюме встреч.
         </p>
 
         <ModelSettingsModal

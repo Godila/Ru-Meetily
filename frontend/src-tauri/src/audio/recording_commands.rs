@@ -671,6 +671,31 @@ pub async fn stop_recording<R: Runtime>(
                 warn!("⚠️ No Parakeet engine found to unload model");
             }
         }
+        Some("gigaam") => {
+            info!("🇷🇺 Unloading GigaAM model...");
+            let engine_clone = {
+                let engine_guard = crate::gigaam_engine::commands::GIGAAM_ENGINE
+                    .lock()
+                    .unwrap();
+                engine_guard.as_ref().cloned()
+            };
+
+            if let Some(engine) = engine_clone {
+                let current_model = engine
+                    .get_current_model()
+                    .await
+                    .unwrap_or_else(|| "unknown".to_string());
+                info!("Current GigaAM model before unload: '{}'", current_model);
+
+                if engine.unload_model().await {
+                    info!("✅ GigaAM model '{}' unloaded successfully", current_model);
+                } else {
+                    warn!("⚠️ Failed to unload GigaAM model '{}'", current_model);
+                }
+            } else {
+                warn!("⚠️ No GigaAM engine found to unload model");
+            }
+        }
         _ => {
             // Default to Whisper
             info!("🎤 Unloading Whisper model...");

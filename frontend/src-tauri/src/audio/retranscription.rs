@@ -4,8 +4,9 @@ use crate::audio::decoder::decode_audio_file;
 use crate::audio::vad::get_speech_chunks_with_progress;
 use super::common::{create_transcript_segments, split_segment_at_silence, write_transcripts_json};
 use super::constants::AUDIO_EXTENSIONS;
-use crate::config::{DEFAULT_WHISPER_MODEL, DEFAULT_PARAKEET_MODEL};
+use crate::config::{DEFAULT_WHISPER_MODEL, DEFAULT_PARAKEET_MODEL, DEFAULT_GIGAAM_MODEL};
 use crate::parakeet_engine::ParakeetEngine;
+use crate::gigaam_engine::GigaamEngine;
 use crate::state::AppState;
 use crate::whisper_engine::WhisperEngine;
 use anyhow::{anyhow, Result};
@@ -102,10 +103,18 @@ pub async fn start_retranscription<R: Runtime>(
     RETRANSCRIPTION_CANCELLED.store(false, Ordering::SeqCst);
 
     let use_parakeet = provider.as_deref() == Some("parakeet");
+    let use_gigaam = provider.as_deref() == Some("gigaam");
     let result = run_retranscription(app.clone(), meeting_id.clone(), meeting_folder_path, language, model, provider).await;
 
     // Unload the engine after the batch job (success, failure, or cancellation)
-    super::common::unload_engine_after_batch(use_parakeet).await;
+    let unload_provider = if use_parakeet {
+        "parakeet"
+    } else if use_gigaam {
+        "gigaam"
+    } else {
+        "localWhisper"
+    };
+    super::common::unload_engine_after_batch(unload_provider).await;
 
     // Guard will automatically clear flag on drop
     // No need for manual: RETRANSCRIPTION_IN_PROGRESS.store(false, Ordering::SeqCst);
@@ -182,6 +191,7 @@ async fn run_retranscription<R: Runtime>(
 
     // Determine which provider to use (default to whisper)
     let use_parakeet = provider.as_deref() == Some("parakeet");
+    let use_gigaam = provider.as_deref() == Some("gigaam");
 
     info!(
         "Starting retranscription for meeting {} with language {:?}, model {:?}, provider {:?}",
@@ -299,13 +309,18 @@ async fn run_retranscription<R: Runtime>(
     emit_progress(&app, &meeting_id, "transcribing", 25, "Loading transcription engine...");
 
     // Initialize the appropriate engine once (not per-segment)
-    let whisper_engine = if !use_parakeet {
+    let whisper_engine = if !use_parakeet && !use_gigaam {
         Some(get_or_init_whisper(&app, model.as_deref()).await?)
     } else {
         None
     };
     let parakeet_engine = if use_parakeet {
         Some(get_or_init_parakeet(&app, model.as_deref()).await?)
+    } else {
+        None
+    };
+    let gigaam_engine = if use_gigaam {
+        Some(get_or_init_gigaam(&app, model.as_deref()).await?)
     } else {
         None
     };
@@ -374,6 +389,13 @@ async fn run_retranscription<R: Runtime>(
                 .transcribe_audio(segment.samples.clone())
                 .await
                 .map_err(|e| anyhow!("Parakeet transcription failed on segment {}: {}", i, e))?;
+            (text, 0.9f32)
+        } else if use_gigaam {
+            let engine = gigaam_engine.as_ref().unwrap();
+            let text = engine
+                .transcribe_audio(segment.samples.clone())
+                .await
+                .map_err(|e| anyhow!("GigaAM transcription failed on segment {}: {}", i, e))?;
             (text, 0.9f32)
         } else {
             let engine = whisper_engine.as_ref().unwrap();
@@ -716,6 +738,88 @@ async fn get_configured_parakeet_model<R: Runtime>(app: &AppHandle<R>) -> Result
             // Default to configured Parakeet model if no config exists
             warn!("No transcript config found, using default Parakeet model");
             Ok(DEFAULT_PARAKEET_MODEL.to_string())
+        }
+    }
+}
+
+/// Get or initialize the GigaAM engine, auto-loading the model if needed.
+/// Mirrors `get_or_init_parakeet`.
+async fn get_or_init_gigaam<R: Runtime>(
+    app: &AppHandle<R>,
+    requested_model: Option<&str>,
+) -> Result<Arc<GigaamEngine>> {
+    use crate::gigaam_engine::commands::GIGAAM_ENGINE;
+
+    let engine = {
+        let guard = GIGAAM_ENGINE.lock().unwrap_or_else(|e| e.into_inner());
+        guard.as_ref().cloned()
+    };
+
+    match engine {
+        Some(e) => {
+            let target_model = match requested_model {
+                Some(model) => model.to_string(),
+                None => get_configured_gigaam_model(app).await?,
+            };
+
+            let current_model = e.get_current_model().await;
+            let needs_load = match &current_model {
+                Some(loaded) => loaded != &target_model,
+                None => true,
+            };
+
+            if needs_load {
+                info!(
+                    "Loading GigaAM model '{}' (current: {:?})",
+                    target_model, current_model
+                );
+                if let Err(discover_err) = e.discover_models().await {
+                    warn!("Error during GigaAM model discovery (continuing anyway): {}", discover_err);
+                }
+                match e.load_model(&target_model).await {
+                    Ok(_) => {
+                        info!("GigaAM model '{}' loaded successfully", target_model);
+                        Ok(e)
+                    }
+                    Err(load_err) => {
+                        error!("Failed to load GigaAM model '{}': {}", target_model, load_err);
+                        Err(anyhow!("Failed to load GigaAM model '{}': {}", target_model, load_err))
+                    }
+                }
+            } else {
+                info!("GigaAM model '{}' already loaded", target_model);
+                Ok(e)
+            }
+        }
+        None => Err(anyhow!("GigaAM engine not initialized")),
+    }
+}
+
+/// Get the configured GigaAM model name from the database.
+async fn get_configured_gigaam_model<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    let app_state = app
+        .try_state::<AppState>()
+        .ok_or_else(|| anyhow!("App state not available"))?;
+
+    let result: Option<(String, String)> = sqlx::query_as(
+        "SELECT provider, model FROM transcript_settings WHERE id = '1'"
+    )
+    .fetch_optional(app_state.db_manager.pool())
+    .await
+    .map_err(|e| anyhow!("Failed to query transcript config: {}", e))?;
+
+    match result {
+        Some((provider, model)) => {
+            if provider == "gigaam" {
+                Ok(model)
+            } else {
+                warn!("Configured provider is not GigaAM, using default model");
+                Ok(DEFAULT_GIGAAM_MODEL.to_string())
+            }
+        },
+        None => {
+            warn!("No transcript config found, using default GigaAM model");
+            Ok(DEFAULT_GIGAAM_MODEL.to_string())
         }
     }
 }

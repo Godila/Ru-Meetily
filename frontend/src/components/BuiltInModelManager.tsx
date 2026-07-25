@@ -62,7 +62,7 @@ export function BuiltInModelManager({
       }
     } catch (error) {
       console.error('Failed to fetch built-in AI models:', error);
-      toast.error('Failed to load models');
+      toast.error('Не удалось загрузить модели');
     } finally {
       setIsLoading(false);
       setHasFetched(true);
@@ -127,7 +127,7 @@ export function BuiltInModelManager({
           });
           // Refresh models list
           fetchModels();
-          toast.success(`Model ${model} downloaded successfully`);
+          toast.success(`Модель ${model} успешно загружена`);
         }
 
         // Handle cancelled status
@@ -216,7 +216,7 @@ export function BuiltInModelManager({
       }
 
       // For real errors, show toast and remove from downloading
-      toast.error(`Failed to download ${modelName}`);
+      toast.error(`Не удалось загрузить ${modelName}`);
 
       setDownloadingModels((prev) => {
         const newSet = new Set(prev);
@@ -232,7 +232,7 @@ export function BuiltInModelManager({
   const cancelDownload = async (modelName: string) => {
     try {
       await invoke('builtin_ai_cancel_download', { modelName });
-      toast.info(`Download of ${modelName} cancelled`);
+      toast.info(`Загрузка ${modelName} отменена`);
       setDownloadingModels((prev) => {
         const newSet = new Set(prev);
         newSet.delete(modelName);
@@ -246,11 +246,11 @@ export function BuiltInModelManager({
   const deleteModel = async (modelName: string) => {
     try {
       await invoke('builtin_ai_delete_model', { modelName });
-      toast.success(`Model ${modelName} deleted`);
+      toast.success(`Модель ${modelName} удалена`);
       fetchModels();
     } catch (error) {
       console.error('Failed to delete model:', error);
-      toast.error(`Failed to delete ${modelName}`);
+      toast.error(`Не удалось удалить ${modelName}`);
     }
   };
 
@@ -324,11 +324,11 @@ export function BuiltInModelManager({
                       <>
                         <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-green-600">
                           <span className="h-2 w-2 rounded-full bg-green-600"></span>
-                          Ready
+                          Готово
                         </span>
                         {selectedModel === model.name && (
                           <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                            Selected
+                            Выбрано
                           </span>
                         )}
                       </>
@@ -336,12 +336,12 @@ export function BuiltInModelManager({
                     {isCorrupted && (
                       <span className="flex shrink-0 items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                         <BadgeAlert className="h-3 w-3" />
-                        Corrupted
+                        Повреждено
                       </span>
                     )}
                     {isError && (
                       <span className="shrink-0 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                        Error
+                        Ошибка
                       </span>
                     )}
                   </div>
@@ -359,7 +359,7 @@ export function BuiltInModelManager({
                       }}
                     >
                       <Download className="mr-2 h-4 w-4" />
-                      Download
+                      Скачать
                     </Button>
                   )}
                   {/* Downloading - Show Cancel button */}
@@ -373,7 +373,7 @@ export function BuiltInModelManager({
                         cancelDownload(model.name);
                       }}
                     >
-                      Cancel
+                      Отмена
                     </Button>
                   )}
                   {/* Error - Show Retry button */}
@@ -388,7 +388,7 @@ export function BuiltInModelManager({
                       }}
                     >
                       <RefreshCw className="mr-2 h-4 w-4" />
-                      Retry
+                      Повторить
                     </Button>
                   )}
                   {/* Corrupted - Show both Retry and Delete buttons */}
@@ -403,7 +403,7 @@ export function BuiltInModelManager({
                         }}
                       >
                         <RefreshCw className="mr-2 h-4 w-4" />
-                        Retry
+                        Повторить
                       </Button>
                       <Button
                         variant="outline"
@@ -414,7 +414,7 @@ export function BuiltInModelManager({
                         }}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        Удалить
                       </Button>
                     </>
                   )}

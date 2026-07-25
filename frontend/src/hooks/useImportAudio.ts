@@ -193,8 +193,8 @@ export function useImportAudio({
       setStatus('idle');
       return result;
     } catch (err: any) {
-      setStatus('error');
       const errorMsg = typeof err === 'string' ? err : (err?.message || String(err) || 'Failed to validate file');
+      setStatus('error');
       setError(errorMsg);
       onErrorRef.current?.(errorMsg);
       return null;

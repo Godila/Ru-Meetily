@@ -179,7 +179,9 @@ impl SettingsRepository {
     ) -> std::result::Result<(), sqlx::Error> {
         let api_key_column = match provider {
             "localWhisper" => "whisperApiKey",
-            "parakeet" => return Ok(()), // Parakeet doesn't need an API key, return early
+            // Local ONNX engines (Parakeet, GigaAM) need no API key.
+            "parakeet" => return Ok(()),
+            "gigaam" => return Ok(()),
             "deepgram" => "deepgramApiKey",
             "elevenLabs" => "elevenLabsApiKey",
             "groq" => "groqApiKey",
@@ -191,14 +193,19 @@ impl SettingsRepository {
             }
         };
 
+        // NOTE: provider/model are intentionally NOT overwritten here — this
+        // query only persists the API key. Previously it hardcoded
+        // provider='parakeet' + DEFAULT_PARAKEET_MODEL in the INSERT, which
+        // would clobber the user's actual provider selection. The ON CONFLICT
+        // branch keeps the existing provider/model untouched.
         let query = format!(
             r#"
-            INSERT INTO transcript_settings (id, provider, model, "{}")
-            VALUES ('1', 'parakeet', '{}', $1)
+            INSERT INTO transcript_settings (id, "{}")
+            VALUES ('1', $1)
             ON CONFLICT(id) DO UPDATE SET
                 "{}" = $1
             "#,
-            api_key_column, crate::config::DEFAULT_PARAKEET_MODEL, api_key_column
+            api_key_column, api_key_column
         );
         sqlx::query(&query).bind(api_key).execute(pool).await?;
 
@@ -211,7 +218,9 @@ impl SettingsRepository {
     ) -> std::result::Result<Option<String>, sqlx::Error> {
         let api_key_column = match provider {
             "localWhisper" => "whisperApiKey",
-            "parakeet" => return Ok(None), // Parakeet doesn't need an API key
+            // Local ONNX engines (Parakeet, GigaAM) need no API key.
+            "parakeet" => return Ok(None),
+            "gigaam" => return Ok(None),
             "deepgram" => "deepgramApiKey",
             "elevenLabs" => "elevenLabsApiKey",
             "groq" => "groqApiKey",

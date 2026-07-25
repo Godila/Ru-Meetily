@@ -90,7 +90,7 @@ export function SummaryGeneratorButtonGroup({
 
       // Check if specific model is configured
       if (!selectedModel) {
-        toast.error('No built-in AI model selected', {
+        toast.error('Не выбрана встроенная AI-модель', {
           description: 'Please select a model in settings',
           duration: 5000,
         });
@@ -116,7 +116,7 @@ export function SummaryGeneratorButtonGroup({
       });
 
       if (!modelInfo) {
-        toast.error('Model not found', {
+        toast.error('Модель не найдена', {
           description: `Could not find information for model: ${selectedModel}`,
           duration: 5000,
         });
@@ -128,7 +128,7 @@ export function SummaryGeneratorButtonGroup({
       const status = modelInfo.status;
 
       if (status.type === 'downloading') {
-        toast.info('Model download in progress', {
+        toast.info('Идёт загрузка модели', {
           description: `${selectedModel} is downloading (${status.progress}%). Please wait until download completes.`,
           duration: 5000,
         });
@@ -136,7 +136,7 @@ export function SummaryGeneratorButtonGroup({
       }
 
       if (status.type === 'not_downloaded') {
-        toast.error('Model not downloaded', {
+        toast.error('Модель не загружена', {
           description: `${selectedModel} needs to be downloaded before use. Opening model settings...`,
           duration: 5000,
         });
@@ -145,7 +145,7 @@ export function SummaryGeneratorButtonGroup({
       }
 
       if (status.type === 'corrupted') {
-        toast.error('Model file corrupted', {
+        toast.error('Файл модели повреждён', {
           description: `${selectedModel} file is corrupted. Please delete and re-download.`,
           duration: 7000,
         });
@@ -154,7 +154,7 @@ export function SummaryGeneratorButtonGroup({
       }
 
       if (status.type === 'error') {
-        toast.error('Model error', {
+        toast.error('Ошибка модели', {
           description: status.Error || 'An error occurred with the model',
           duration: 5000,
         });
@@ -163,7 +163,7 @@ export function SummaryGeneratorButtonGroup({
       }
 
       // Fallback
-      toast.error('Model not available', {
+      toast.error('Модель недоступна', {
         description: 'The selected model is not ready for use',
         duration: 5000,
       });
@@ -171,7 +171,7 @@ export function SummaryGeneratorButtonGroup({
 
     } catch (error) {
       console.error('Error checking built-in AI models:', error);
-      toast.error('Failed to check model status', {
+      toast.error('Не удалось проверить статус модели', {
         description: error instanceof Error ? error.message : String(error),
         duration: 5000,
       });
@@ -254,10 +254,10 @@ export function SummaryGeneratorButtonGroup({
             Analytics.trackButtonClick('stop_summary_generation', 'meeting_details');
             onStopGeneration();
           }}
-          title="Stop summary generation"
+          title="Остановить генерацию резюме"
         >
           <Square className="xl:mr-2" size={18} fill="currentColor" />
-          <span className="hidden lg:inline xl:inline">Stop</span>
+          <span className="hidden lg:inline xl:inline">Стоп</span>
         </Button>
       ) : (
         <Button
@@ -331,7 +331,7 @@ export function SummaryGeneratorButtonGroup({
             <Button
               variant="outline"
               size="sm"
-              title="Select summary template"
+              title="Выбрать шаблон резюме"
             >
               <FileText />
               <span className="hidden lg:inline">Template</span>

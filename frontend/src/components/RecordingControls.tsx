@@ -408,7 +408,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Start recording</p>
+                        <p>Начать запись</p>
                       </TooltipContent>
                     </Tooltip>
                   ) : (
@@ -465,7 +465,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Stop recording</p>
+                          <p>Остановить запись</p>
                         </TooltipContent>
                       </Tooltip>
                     </>

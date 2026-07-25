@@ -15,6 +15,7 @@ use tauri::{AppHandle, Manager, Runtime};
 pub enum TranscriptionEngine {
     Whisper(Arc<crate::whisper_engine::WhisperEngine>),  // Direct access (backward compat)
     Parakeet(Arc<crate::parakeet_engine::ParakeetEngine>), // Direct access (backward compat)
+    Gigaam(Arc<crate::gigaam_engine::GigaamEngine>), // Direct access (Russian ASR)
     Provider(Arc<dyn TranscriptionProvider>),  // Trait-based (preferred for new code)
 }
 
@@ -24,6 +25,7 @@ impl TranscriptionEngine {
         match self {
             Self::Whisper(engine) => engine.is_model_loaded().await,
             Self::Parakeet(engine) => engine.is_model_loaded().await,
+            Self::Gigaam(engine) => engine.is_model_loaded().await,
             Self::Provider(provider) => provider.is_model_loaded().await,
         }
     }
@@ -33,6 +35,7 @@ impl TranscriptionEngine {
         match self {
             Self::Whisper(engine) => engine.get_current_model().await,
             Self::Parakeet(engine) => engine.get_current_model().await,
+            Self::Gigaam(engine) => engine.get_current_model().await,
             Self::Provider(provider) => provider.get_current_model().await,
         }
     }
@@ -42,6 +45,7 @@ impl TranscriptionEngine {
         match self {
             Self::Whisper(_) => "Whisper (direct)",
             Self::Parakeet(_) => "Parakeet (direct)",
+            Self::Gigaam(_) => "GigaAM (direct)",
             Self::Provider(provider) => provider.provider_name(),
         }
     }
@@ -135,10 +139,30 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
                 }
             }
         }
+        "gigaam" => {
+            info!("🔍 Validating GigaAM model...");
+            if let Err(init_error) = crate::gigaam_engine::commands::gigaam_init().await {
+                warn!("❌ Failed to initialize GigaAM engine: {}", init_error);
+                return Err(format!(
+                    "Failed to initialize GigaAM speech recognition: {}",
+                    init_error
+                ));
+            }
+            match crate::gigaam_engine::commands::gigaam_validate_model_ready_with_config(app).await {
+                Ok(model_name) => {
+                    info!("✅ GigaAM model validation successful: {} is ready", model_name);
+                    Ok(())
+                }
+                Err(e) => {
+                    warn!("❌ GigaAM model validation failed: {}", e);
+                    Err(e)
+                }
+            }
+        }
         other => {
             warn!("❌ Unsupported transcription provider for local recording: {}", other);
             Err(format!(
-                "Provider '{}' is not supported for local transcription. Please select 'localWhisper' or 'parakeet'.",
+                "Provider '{}' is not supported for local transcription. Please select 'localWhisper', 'parakeet', or 'gigaam'.",
                 other
             ))
         }
@@ -209,6 +233,32 @@ pub async fn get_or_init_transcription_engine<R: Runtime>(
                 }
                 None => {
                     Err("Parakeet engine not initialized. This should not happen after validation.".to_string())
+                }
+            }
+        }
+        "gigaam" => {
+            info!("🇷🇺 Initializing GigaAM transcription engine");
+
+            let engine = {
+                let guard = crate::gigaam_engine::commands::GIGAAM_ENGINE
+                    .lock()
+                    .unwrap();
+                guard.as_ref().cloned()
+            };
+
+            match engine {
+                Some(engine) => {
+                    if engine.is_model_loaded().await {
+                        let model_name = engine.get_current_model().await
+                            .unwrap_or_else(|| "unknown".to_string());
+                        info!("✅ GigaAM model '{}' already loaded", model_name);
+                        Ok(TranscriptionEngine::Gigaam(engine))
+                    } else {
+                        Err("GigaAM engine initialized but no model loaded. This should not happen after validation.".to_string())
+                    }
+                }
+                None => {
+                    Err("GigaAM engine not initialized. This should not happen after validation.".to_string())
                 }
             }
         }

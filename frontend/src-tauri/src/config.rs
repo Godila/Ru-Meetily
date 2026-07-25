@@ -11,6 +11,11 @@ pub const DEFAULT_WHISPER_MODEL: &str = "large-v3-turbo";
 /// This is the quantized version optimized for speed.
 pub const DEFAULT_PARAKEET_MODEL: &str = "parakeet-tdt-0.6b-v3-int8";
 
+/// Default GigaAM model for Russian transcription when the `gigaam` provider
+/// is selected without a specific model. E2E RNN-T variant with punctuation,
+/// int8 quantized.
+pub const DEFAULT_GIGAAM_MODEL: &str = "gigaam-v3-rnnt-int8";
+
 /// Whisper model catalog with metadata for all supported models.
 /// Used by both WhisperEngine::discover_models() and discover_models_standalone().
 ///

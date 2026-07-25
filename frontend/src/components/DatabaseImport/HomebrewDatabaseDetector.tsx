@@ -61,7 +61,7 @@ export function HomebrewDatabaseDetector({ onImportSuccess, onDecline }: Homebre
         legacyDbPath: detectedPath,
       });
 
-      toast.success('Database imported successfully! Reloading...');
+      toast.success('База данных успешно импортирована! Перезагрузка...');
 
       // Wait 1 second for user to see success, then reload window to refresh all data
       setTimeout(() => {
@@ -97,22 +97,22 @@ export function HomebrewDatabaseDetector({ onImportSuccess, onDecline }: Homebre
           <div className="flex items-center gap-2 mb-1">
             <AlertCircle className="h-4 w-4 text-blue-600" />
             <h3 className="text-sm font-semibold text-blue-900">
-              Previous Meetily Installation Detected!
+              Обнаружена предыдущая установка Meetily!
             </h3>
           </div>
           <p className="text-sm text-blue-800 mb-2">
-            We found an existing database from your previous Meetily installation (Python backend version).
+            Мы нашли существующую базу данных от вашей предыдущей установки Meetly (версия с Python-бэкендом).
           </p>
           <div className="bg-white/50 rounded p-2 mb-3">
             <p className="text-xs text-blue-700 font-mono break-all">
               {detectedPath}
             </p>
             <p className="text-xs text-blue-600 mt-1">
-              Size: {formatFileSize(dbSize)}
+              Размер: {formatFileSize(dbSize)}
             </p>
           </div>
           <p className="text-sm text-blue-800 mb-3">
-            Would you like to import your previous meetings, transcripts, and summaries?
+            Хотите импортировать предыдущие встречи, транскрипции и резюме?
           </p>
           
           {/* Yes/No Buttons */}
@@ -125,12 +125,12 @@ export function HomebrewDatabaseDetector({ onImportSuccess, onDecline }: Homebre
               {isImporting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Importing...</span>
+                  <span>Импорт...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>Yes, Import</span>
+                  <span>Да, импортировать</span>
                 </>
               )}
             </button>
@@ -140,7 +140,7 @@ export function HomebrewDatabaseDetector({ onImportSuccess, onDecline }: Homebre
               disabled={isImporting}
               className="flex-1 px-4 py-2 border-2 border-blue-400 text-blue-700 rounded-lg hover:bg-blue-100 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
             >
-              No, Browse Manually
+              Нет, выбрать вручную
             </button>
           </div>
         </div>
