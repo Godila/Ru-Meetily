@@ -62,7 +62,14 @@ jobs:
         run: cargo test --lib --no-run
 
       - name: Run tests
-        run: cargo test --lib --no-fail-fast
+        # --skip excludes hardware-dependent tests that segfault on a CI
+        # runner with no audio subsystem (cpal/WASAPI init crashes with
+        # STATUS_ACCESS_VIOLATION). These run fine locally:
+        #   test_get_output_device          — needs an output device
+        #   test_check_permissions          — WASAPI permission probe
+        #   test_list_system_audio_devices  — enumerates real devices
+        # Pattern is a regex matched against the full test path.
+        run: cargo test --lib --no-fail-fast -- --skip audio::playback_monitor --skip audio::system_audio_commands
 
       # Non-blocking clippy: surfaces lints for visibility but does not fail
       # the job. Promote to `-D warnings` once the existing ~200 lints are fixed.
