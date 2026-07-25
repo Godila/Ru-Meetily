@@ -1,0 +1,102 @@
+name: CI
+
+# Run on every push and pull request to main. This is the safety net that
+# prevents broken code from landing — previously every workflow in this repo
+# was `workflow_dispatch` (manual only), so nothing gated `main`.
+#
+# Scope (intentionally minimal for the first iteration):
+#   - Rust: `cargo test` (must pass). `cargo clippy` runs but does NOT block
+#     (-D warnings is too strict today: ~200 pre-existing lints across the
+#     codebase; flipping them is a separate cleanup task).
+#   - Frontend: `tsc --noEmit` on src/ only. `next lint` is skipped because
+#     the project has no ESLint config yet.
+#
+# Adding stricter checks later (clippy -D warnings, eslint, vitest) is a
+# matter of editing this file once the underlying debt is paid down.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same ref when a new commit is pushed.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (test + clippy)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: frontend/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      # Cache ~/.cargo AND target/ — without this, a fresh CI run recompiles
+      # the whole dependency tree (~5+ min). With it, runs after the first are
+      # typically under a minute when no Cargo.toml changed.
+      - name: Cache cargo registry + build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/src-tauri
+
+      # FFmpeg is downloaded by build.rs into frontend/src-tauri/binaries/ on
+      # first build. Cache it across runs to skip the ~30s download. The path
+      # matches where build/ffmpeg.rs writes the binary.
+      - name: Cache FFmpeg sidecar
+        uses: actions/cache@v4
+        with:
+          path: frontend/src-tauri/binaries
+          key: ffmpeg-${{ runner.os }}-${{ hashFiles('frontend/src-tauri/build/ffmpeg.rs') }}
+
+      - name: Build tests
+        run: cargo test --lib --no-run --locked
+
+      - name: Run tests
+        run: cargo test --lib --no-fail-fast
+
+      # Non-blocking clippy: surfaces lints for visibility but does not fail
+      # the job. Promote to `-D warnings` once the existing ~200 lints are fixed.
+      - name: Clippy (non-blocking)
+        run: cargo clippy --lib --all-targets
+        continue-on-error: true
+
+  frontend:
+    name: Frontend (tsc)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      # Type-check src/ only. The repo has tests/lib/*.test.ts importing from
+      # "bun:test" (a pre-existing orphan test file), which tsc would flag.
+      # tsconfig.ci.json extends the base config and excludes tests, so CI
+      # stays green without touching the legacy file or the dev tsconfig.
+      - name: Type-check (src only)
+        run: npx tsc --noEmit -p tsconfig.ci.json
