@@ -1,5 +1,6 @@
 <div align="center">
     <h1>Convoic</h1>
+    <img width="1024" height="1024" alt="3hJWzXDA-LHzc-w8goBPI_QugTZKus" src="https://github.com/user-attachments/assets/4b73e20c-40b2-4e7d-8a92-91e5007c0db3" />
     <p><strong>Голос ваших встреч, превращённый в смысл.</strong></p>
     <p>Локальный AI-ассистент для встреч с распознаванием русской речи на базе GigaAM</p>
     <p>
