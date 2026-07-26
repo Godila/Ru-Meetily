@@ -11,6 +11,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { HardwareProfileInfo } from '@/types/hardware';
+import {
+  gpuLabel,
+  vramLabel,
+  inferenceBadgeClass,
+  isInferenceGpu,
+} from '@/lib/hardware-display';
 
 function StatusDot({ on }: { on: boolean }) {
   return (
@@ -87,18 +93,12 @@ export function SetupOverviewStep() {
     goNext();
   };
 
-  // GPU display strings.
-  const gpuLabel = hw
-    ? hw.gpuName
-      ? hw.gpuName
-      : hw.hasGpu
-        ? `GPU (${hw.gpuType})`
-        : 'Не обнаружен'
-    : '—';
-  const vramLabel =
-    hw?.gpuVramGb != null ? `${Math.round(hw.gpuVramGb)} ГБ` : '—';
+  // GPU display strings (logic in @/lib/hardware-display, unit-tested).
+  const gpu = gpuLabel(hw);
+  const vram = vramLabel(hw);
   const inferenceBadge = hw?.recommendedInferenceMode ?? '—';
-  const isGpu = inferenceBadge.startsWith('GPU');
+  const isGpu = isInferenceGpu(inferenceBadge);
+  const badgeClass = inferenceBadgeClass(inferenceBadge);
 
   return (
     <OnboardingContainer
@@ -131,14 +131,14 @@ export function SetupOverviewStep() {
             <HardwareRow
               icon={MonitorDown}
               label="Видеокарта"
-              value={gpuLabel}
+              value={gpu}
               dot={hw.hasGpu}
             />
             {hw.hasGpu && (
               <HardwareRow
                 icon={MemoryStick}
                 label="Видеопамять (VRAM)"
-                value={vramLabel}
+                value={vram}
               />
             )}
 
@@ -147,11 +147,7 @@ export function SetupOverviewStep() {
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-sm text-gray-600">Инференс резюме</span>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    isGpu
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
                 >
                   {inferenceBadge}
                 </span>
