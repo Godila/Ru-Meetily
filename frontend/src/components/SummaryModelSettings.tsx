@@ -24,7 +24,6 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
 
   const [useGpu, setUseGpu] = useState<boolean>(true);
   const [hasGpu, setHasGpu] = useState<boolean>(false);
-  const [gpuName, setGpuName] = useState<string | null>(null);
 
   const { isAutoSummary, toggleIsAutoSummary } = useConfig();
 
@@ -78,10 +77,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
   // Detect hardware once on mount to drive the GPU-toggle availability.
   useEffect(() => {
     invoke<HardwareProfileInfo>('api_get_hardware_profile')
-      .then((info) => {
-        setHasGpu(info.hasGpu);
-        setGpuName(info.gpuName);
-      })
+      .then((info) => setHasGpu(info.hasGpu))
       .catch((e) => console.warn('Hardware detection failed:', e));
   }, []);
 
@@ -174,9 +170,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
             </h3>
             <p className="text-sm text-gray-600">
               {hasGpu
-                ? gpuName
-                  ? `Резюме генерируется на видеокарте «${gpuName}» — в несколько раз быстрее, чем на процессоре. Качество одинаковое. Выключайте только если видеокарта работает нестабильно.`
-                  : 'Резюме генерируется на видеокарте — в несколько раз быстрее, чем на процессоре. Качество одинаковое. Выключайте только если видеокарта работает нестабильно.'
+                ? 'Резюме генерируется быстрее за счёт видеокарты. Величина ускорения зависит от вашей видеокарты. Отключайте, если резюме перестало генерироваться или появились ошибки.'
                 : 'Видеокарта не обнаружена — резюме генерируется на процессоре. Это медленнее, но работает на любом компьютере.'}
             </p>
           </div>
