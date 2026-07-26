@@ -4,6 +4,21 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версионирование — [SemVer](https://semver.org/lang/ru/).
 
+## [0.5.2] — 2026-07-25
+
+### 🐛 Исправлено
+
+- **Онбординг — пропущенные упоминания старого бренда.** На этапах онбординга остались строки со старым названием:
+  - `WelcomeStep.tsx`: заголовок «Добро пожаловать в Meetly» → «Добро пожаловать в Convoic»
+  - `SetupOverviewStep.tsx`: описание «Для работы Meetily необходимо...» → «Для работы Convoic необходимо...»
+  - `SetupOverviewStep.tsx`: ссылка «Сообщить о проблемах на GitHub» вела на upstream-репо `Zackriya-Solutions/meeting-minutes` → обновлена на `Godila/convoic/issues`
+
+### 🛠️ Технически
+
+Эти строки не были найдены первоначальным grep'ом ребрендинга 0.5.0, потому что тексты вынесены в отдельные файлы `steps/WelcomeStep.tsx` и `steps/SetupOverviewStep.tsx`, не покрытые первоначальной пакетной заменой. После исправления проведён полный byte-level аудит — других UI-видимых упоминаний старого бренда не осталось (6 оставшихся находятся в legacy-DB-detection коде и ссылаются на upstream-имя корректно в контексте импорта старых установок).
+
+---
+
 ## [0.5.1] — 2026-07-25
 
 ### 🎨 Бренд-айдентика: логотип Convoic
@@ -137,6 +152,7 @@
 - Умный онбординг + настройка GPU-инференса (PR #4)
 - Vulkan GPU-инференс для llama-helper на Windows (PR #3)
 
+[0.5.2]: https://github.com/Godila/convoic/releases/tag/v0.5.2
 [0.5.1]: https://github.com/Godila/convoic/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Godila/convoic/releases/tag/v0.5.0
 [0.4.1]: https://github.com/Godila/convoic/releases/tag/v0.4.1

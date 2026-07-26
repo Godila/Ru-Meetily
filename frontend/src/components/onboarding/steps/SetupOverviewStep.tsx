@@ -103,7 +103,7 @@ export function SetupOverviewStep() {
   return (
     <OnboardingContainer
       title="Обзор настройки"
-      description="Для работы Meetly необходимо загрузить модель распознавания речи и локальную LLM для саммари."
+      description="Для работы Convoic необходимо загрузить модель распознавания речи и локальную LLM для саммари."
       step={2}
       totalSteps={isMac ? 4 : 3}
     >
@@ -215,7 +215,7 @@ export function SetupOverviewStep() {
           </Button>
           <div className="text-center">
             <a
-              href="https://github.com/Zackriya-Solutions/meeting-minutes"
+              href="https://github.com/Godila/convoic/issues"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-gray-600 hover:underline"

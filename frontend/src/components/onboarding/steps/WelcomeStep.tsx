@@ -24,7 +24,7 @@ export function WelcomeStep() {
 
   return (
     <OnboardingContainer
-      title="Добро пожаловать в Meetly"
+      title="Добро пожаловать в Convoic"
       description="Запись. Транскрипция. Резюме. Всё на вашем устройстве."
       step={1}
       hideProgress={true}
