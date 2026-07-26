@@ -36,6 +36,12 @@ enum Request {
         repeat_penalty: Option<f32>,
         penalty_last_n: Option<i32>,
         stop_tokens: Option<Vec<String>>,
+        /// Inference-device override from the host.
+        /// `None`/`Some(false)` → auto (use VRAM heuristic).
+        /// `Some(true)` → force CPU (n_gpu_layers = 0), skipping VRAM detection.
+        /// Must stay in sync with the duplicate enum in
+        /// frontend/src-tauri/src/summary/summary_engine/client.rs.
+        force_cpu: Option<bool>,
     },
     Ping,
     Shutdown,
@@ -147,7 +153,17 @@ fn detect_vram_gb() -> f32 {
         }
     }
 
-    /// TODO: Vulkan VRAM detection
+    // Vulkan: NVIDIA cards still report via nvidia-smi even when the sidecar
+    // was built with the Vulkan feature. AMD/Intel fall back to platform
+    // queries (Windows CIM / Linux sysfs). All paths are best-effort: on
+    // failure we drop through to the conservative 4 GB fallback below.
+    #[cfg(feature = "vulkan")]
+    {
+        if let Some(vram) = detect_vulkan_vram() {
+            eprintln!("Vulkan VRAM detected: {:.2} GB", vram);
+            return vram;
+        }
+    }
 
     eprintln!("VRAM detection not available, using conservative estimate");
     4.0 // Conservative fallback
@@ -182,6 +198,96 @@ fn detect_cuda_vram() -> Option<f32> {
         if let Ok(stdout) = String::from_utf8(output.stdout) {
             if let Ok(mb) = stdout.trim().parse::<f32>() {
                 return Some(mb / 1024.0); // Convert MB to GB
+            }
+        }
+    }
+    None
+}
+
+/// Vulkan-build VRAM detection. NVIDIA GPUs are still queryable via nvidia-smi
+/// even when the sidecar was compiled with the Vulkan backend; non-NVIDIA
+/// cards fall through to platform-specific queries.
+#[cfg(feature = "vulkan")]
+fn detect_vulkan_vram() -> Option<f32> {
+    // 1. nvidia-smi works regardless of the compiled backend.
+    if let Some(v) = detect_nvidia_vram_any_backend() {
+        return Some(v);
+    }
+
+    // 2. Platform fallbacks for AMD/Intel.
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(v) = detect_vulkan_vram_windows() {
+            return Some(v);
+        }
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if let Some(v) = detect_vulkan_vram_linux() {
+            return Some(v);
+        }
+    }
+
+    None
+}
+
+/// Query NVIDIA free VRAM in GB. Not feature-gated — used by both the cuda and
+/// vulkan paths because the Vulkan build still runs on NVIDIA hardware.
+fn detect_nvidia_vram_any_backend() -> Option<f32> {
+    let output = std::process::Command::new("nvidia-smi")
+        .args([
+            "--query-gpu=memory.free",
+            "--format=csv,noheader,nounits",
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mb = stdout.trim().parse::<f32>().ok()?;
+    Some(mb / 1024.0)
+}
+
+/// Windows fallback via PowerShell CIM. `AdapterRAM` is a u32 and clamps
+/// values above ~4 GiB, so this is best-effort and capped at 16 GiB.
+#[cfg(all(feature = "vulkan", target_os = "windows"))]
+fn detect_vulkan_vram_windows() -> Option<f32> {
+    let output = std::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            // Sum AdapterRAM across all non-Basic adapters; the u32 wraparound
+            // means per-card values are unreliable above 4 GiB.
+            "(Get-CimInstance Win32_VideoController | \
+             Where-Object { $_.Name -notlike '*Basic*' } | \
+             Measure-Object -Property AdapterRAM -Sum).Sum",
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let bytes: f32 = stdout.trim().parse().ok()?;
+    if bytes <= 0.0 {
+        return None;
+    }
+    Some((bytes / 1024.0 / 1024.0 / 1024.0).min(16.0))
+}
+
+/// Linux fallback via amdgpu sysfs. Intel iGPUs share system RAM and do not
+/// expose this node, so they fall through to the conservative default.
+#[cfg(all(feature = "vulkan", all(unix, not(target_os = "macos"))))]
+fn detect_vulkan_vram_linux() -> Option<f32> {
+    let entries = std::fs::read_dir("/sys/class/drm").ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path().join("device").join("mem_info_vram_total");
+        if let Ok(s) = std::fs::read_to_string(&path) {
+            if let Ok(bytes) = s.trim().parse::<f32>() {
+                return Some(bytes / 1024.0 / 1024.0 / 1024.0);
             }
         }
     }
@@ -283,6 +389,10 @@ struct ModelState {
     model: Option<LlamaModel>,
     model_path: Option<PathBuf>,
     context_size: u32,
+    /// Tracks the force_cpu state of the currently loaded model. The reload
+    /// guard compares it so that toggling GPU on/off on a warm sidecar forces
+    /// a model reload with the new `n_gpu_layers` value.
+    current_force_cpu: bool,
     last_activity: Arc<AtomicU64>,
 }
 
@@ -294,6 +404,7 @@ impl ModelState {
             model: None,
             model_path: None,
             context_size: 2048,
+            current_force_cpu: false,
             last_activity: Arc::new(AtomicU64::new(Self::current_timestamp())),
         })
     }
@@ -314,10 +425,19 @@ impl ModelState {
         Self::current_timestamp() - self.last_activity.load(Ordering::SeqCst)
     }
 
-    fn load_model_if_needed(&mut self, model_path: PathBuf, context_size: u32) -> Result<()> {
-        // Check if model is already loaded
+    fn load_model_if_needed(
+        &mut self,
+        model_path: PathBuf,
+        context_size: u32,
+        force_cpu: bool,
+    ) -> Result<()> {
+        // Check if model is already loaded with the same path, context size,
+        // and force_cpu state. A toggle change must trigger a reload.
         if let Some(ref loaded_path) = self.model_path {
-            if loaded_path == &model_path && self.context_size == context_size {
+            if loaded_path == &model_path
+                && self.context_size == context_size
+                && self.current_force_cpu == force_cpu
+            {
                 eprintln!("✓ Model already loaded");
                 self.update_activity();
                 return Ok(());
@@ -326,8 +446,14 @@ impl ModelState {
 
         eprintln!("📥 Loading model: {}", model_path.display());
 
-        // Detect GPU layers
-        let gpu_layers = get_default_gpu_layers(&model_path, context_size);
+        // GPU layers: 0 when CPU is forced, otherwise auto-detect via VRAM
+        // heuristics. Forcing CPU skips VRAM detection entirely.
+        let gpu_layers = if force_cpu {
+            eprintln!("🔒 CPU forced by host (force_cpu=true), n_gpu_layers=0");
+            0
+        } else {
+            get_default_gpu_layers(&model_path, context_size)
+        };
 
         // Configure model parameters with GPU offload
         let model_params = LlamaModelParams::default().with_n_gpu_layers(gpu_layers);
@@ -339,9 +465,10 @@ impl ModelState {
         self.model = Some(model);
         self.model_path = Some(model_path);
         self.context_size = context_size;
+        self.current_force_cpu = force_cpu;
         self.update_activity();
 
-        eprintln!("✅ Model loaded successfully");
+        eprintln!("✅ Model loaded successfully (n_gpu_layers: {})", gpu_layers);
         Ok(())
     }
 
@@ -600,9 +727,12 @@ fn main() -> Result<()> {
                         repeat_penalty,
                         penalty_last_n,
                         stop_tokens,
+                        force_cpu,
                     }) => {
                         let max_tokens = max_tokens.unwrap_or(512);
                         let context_size = context_size.unwrap_or(2048);
+                        // force_cpu defaults to None (auto) when the host omits it.
+                        let force_cpu = force_cpu.unwrap_or(false);
 
                         let sampling = SamplingConfig::from_request(
                             temperature,
@@ -618,7 +748,9 @@ fn main() -> Result<()> {
                         // Load model if path provided
                         if let Some(path_str) = model_path {
                             let path = PathBuf::from(path_str);
-                            if let Err(e) = state.load_model_if_needed(path, context_size) {
+                            if let Err(e) =
+                                state.load_model_if_needed(path, context_size, force_cpu)
+                            {
                                 send_response(&Response::Response {
                                     text: String::new(),
                                     error: Some(format!("Failed to load model: {}", e)),
@@ -746,5 +878,27 @@ mod tests {
         assert_eq!(sampling.repeat_penalty, 1.05);
         assert_eq!(sampling.penalty_last_n, 256);
         assert!(sampling.uses_penalties());
+    }
+
+    #[test]
+    fn generate_request_defaults_force_cpu_when_omitted() {
+        // Old clients that omit force_cpu must still deserialize: the field
+        // is additive and defaults to None (auto mode).
+        let json = r#"{"type":"generate","prompt":"summarize"}"#;
+        let request: Request = serde_json::from_str(json).unwrap();
+        let Request::Generate { force_cpu, .. } = request else {
+            panic!("expected generate request");
+        };
+        assert_eq!(force_cpu, None);
+    }
+
+    #[test]
+    fn generate_request_deserializes_force_cpu_true() {
+        let json = r#"{"type":"generate","prompt":"summarize","force_cpu":true}"#;
+        let request: Request = serde_json::from_str(json).unwrap();
+        let Request::Generate { force_cpu, .. } = request else {
+            panic!("expected generate request");
+        };
+        assert_eq!(force_cpu, Some(true));
     }
 }
