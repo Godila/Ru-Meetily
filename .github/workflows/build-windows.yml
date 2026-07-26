@@ -640,13 +640,19 @@ jobs:
       - name: Build llama-helper sidecar
         shell: pwsh
         run: |
-          # Build llama-helper without GPU features (CPU-only)
-          # Note: Vulkan build has CMake race condition issues with llama-cpp-sys-2
-          # The Tauri app itself uses whisper-rs with Vulkan for transcription
-          # llama-helper is for LLM inference and works fine on CPU
-          Write-Host "Building llama-helper sidecar (CPU-only)..."
+          # Build llama-helper with Vulkan GPU acceleration.
+          # The Vulkan SDK is installed earlier in the pipeline; SPIRV-Headers
+          # ships inside it but llama-cpp-sys-2's build script does not forward
+          # it to CMake find_package, so set the package-hint explicitly.
+          # The hint variable name contains a hyphen (SPIRV-Headers_DIR), which
+          # PowerShell accepts only via the Env: drive, not the $env: prefix.
+          Write-Host "Building llama-helper sidecar with Vulkan GPU acceleration..."
 
-          cargo build --release -p llama-helper
+          $spirvHeadersDir = Join-Path $env:VULKAN_SDK "Lib\cmake"
+          Set-Item -Path "Env:SPIRV-Headers_DIR" -Value $spirvHeadersDir
+          $env:CMAKE_PREFIX_PATH = $env:VULKAN_SDK
+
+          cargo build --release -p llama-helper --features vulkan
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to build llama-helper"
