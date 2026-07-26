@@ -7,7 +7,7 @@
 //! Like Parakeet, it runs fully in-process via ONNX Runtime (`ort` crate) —
 //! no Python, no external services. Weights are the ONNX conversions published
 //! by `istupakov/gigaam-v3-onnx` (same author as the Parakeet ONNX models
-//! already used by Meetily).
+//! already used by Convoic).
 //!
 //! # Current scope
 //!

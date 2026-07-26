@@ -18,13 +18,13 @@ export function About() {
                 <div className="mb-3">
                     <Image
                         src="icon_128x128.png"
-                        alt="Ru-Meetily Logo"
+                        alt="Convoic Logo"
                         width={64}
                         height={64}
                         className="mx-auto"
                     />
                 </div>
-                <h1 className="text-xl font-bold text-gray-900">Ru-Meetily</h1>
+                <h1 className="text-xl font-bold text-gray-900">Convoic</h1>
                 <span className="text-sm text-gray-500"> v{currentVersion}</span>
                 <p className="text-medium text-gray-600 mt-1">
                     Заметки и резюме встреч в реальном времени, не покидающие ваш компьютер.
@@ -33,7 +33,7 @@ export function About() {
 
             {/* Features Grid - Compact */}
             <div className="space-y-3">
-                <h2 className="text-base font-semibold text-gray-800">Чем Ru-Meetily отличается</h2>
+                <h2 className="text-base font-semibold text-gray-800">Чем Convoic отличается</h2>
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-gray-50 rounded p-3 hover:bg-gray-100 transition-colors">
                         <h3 className="font-bold text-sm text-gray-900 mb-1">Приватность прежде всего</h3>

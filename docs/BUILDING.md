@@ -1,13 +1,13 @@
-# Building Meetily from Source
+# Building Convoic from Source
 
-This guide provides detailed instructions for building Meetily from source on different operating systems.
+This guide provides detailed instructions for building Convoic from source on different operating systems.
 
 <details>
 <summary>Linux</summary>
 
 ## 🐧 Building on Linux
 
-This guide helps you build Meetily on Linux with **automatic GPU acceleration**. The build system detects your hardware and configures the best performance automatically.
+This guide helps you build Convoic on Linux with **automatic GPU acceleration**. The build system detects your hardware and configures the best performance automatically.
 
 ---
 

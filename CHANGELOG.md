@@ -1,8 +1,54 @@
 # Changelog
 
-Все заметные изменения Ru-Meetily документируются в этом файле.
+Все заметные изменения Convoic (ранее Ru-Meetily) документируются в этом файле.
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версионирование — [SemVer](https://semver.org/lang/ru/).
+
+## [0.5.0] — 2026-07-25
+
+### 🎉 Ребрендинг: Ru-Meetily → Convoic
+
+Полный ребрендинг приложения. Новое имя, новый identifier, новая версия.
+
+**Convoic = convo (разговор) + voice (голос)** — «голос ваших встреч, превращённый в смысл». Tagline: *Convoic. The voice of your conversations.*
+
+Имя выбрано через направленный brainstorm из следующих соображений: самостоятельный неологизм на латинице, корневая метафора «встреча + голос», технологичный AI-first тон, 7 букв / 2 слога, легко произносится по-русски (Конво́ик) и по-английски (/ˈkɒn.vɔɪk/). Brand spec: `docs/brand/convoic-brand-spec.md`.
+
+### ⚠️ Breaking changes
+
+- **Имя приложения:** `Ru-Meetily` → `Convoic`
+- **App identifier:** `com.meetily.ai` → `com.convoic.app`
+- **AppData path:** `%APPDATA%\com.meetily.ai\` → `%APPDATA%\com.convoic.app\`
+- **Cargo package name:** `meetily` → `convoic` (бинарь: `meetily.exe` → `convoic.exe`)
+- **Без миграции данных:** существующие встречи, модели GigaAM (~227 MB) и настройки из 0.4.x НЕ переносятся. При первом запуске Convoic стартует с чистого листа. Старое приложение Ru-Meetily остаётся установленным, его можно удалить вручную вместе с `%APPDATA%\com.meetily.ai\`.
+- **Папка записей:** `~/Music/meetily-recordings` → `~/Music/convoic-recordings`
+- **Templates subpath:** `%APPDATA%\Roaming\Meetily\templates` → `%APPDATA%\Roaming\Convoic\templates`
+- **Env-vars (для dev/CI):** `MEETILY_LLAMA_HELPER` → `CONVOIC_LLAMA_HELPER`, `MEETILY_SKIP_SIDECAR_VERIFY` → `CONVOIC_SKIP_SIDECAR_VERIFY`
+
+### ✨ Что нового
+
+- Все UI-строки (About, Info, Logo, Sidebar, Onboarding, dialogs, metadata) обновлены под бренд Convoic
+- Tray tooltip и все notification titles локализованы под Convoic
+- Метаданные приложения (`productName`, `identifier`, `version`, `Cargo.toml` name + description + repository + authors, `package.json` name) приведены в соответствие
+- Tauri window title, build script'ы (.bat/.ps1), Windows installer locale — обновлены
+- README полностью переработан под новый бренд с migration notice для существующих пользователей
+- Storage keys переименованы: `meetily_user_id` → `convoic_user_id` (sessionStorage), `MeetilyRecoveryDB` → `ConvoicRecoveryDB` (IndexedDB)
+- macOS CoreAudio tap name и Console.app process identifier переименованы (косметика, не влияет на Windows-сборку)
+
+### 🛠️ Осознанные исключения (out of scope)
+
+- **Backend Python-сервис** (`backend/` с Docker-compose, Homebrew keg names) — отдельный сервис, не входит в Tauri bundle. Оставлен как есть.
+- **Parakeet model download URL** (`https://meetily.towardsgeneralintelligence.com/...`) — upstream-инфраструктура, работает. Переименование сломало бы скачивание.
+- **Legacy DB detection paths** (`/opt/homebrew/var/meetily/...`, `/usr/local/var/meetily/...`) — функциональный detection старых upstream-инсталляций для импорта. Переименование сломало бы import-flow.
+- **GitHub repo** переименован: `Godila/Ru-Meetily` → `Godila/convoic` (старые ссылки автоматически редиректят).
+- **Логотип/айдентика, домен `convoic.ai`, товарный знак** — отдельные задачи вне кодовой базы.
+
+### 📦 Известные ограничения
+
+- Установщики не подписаны код-сертификатом (`DIGICERT_KEYPAIR_ALIAS` не задан) — Windows SmartScreen выдаст предупреждение
+- Auto-update через Tauri updater не настроен (`TAURI_SIGNING_PRIVATE_KEY` отсутствует) — обновление только ручной переустановкой
+
+---
 
 ## [0.4.1] — 2026-07-25
 
@@ -68,5 +114,6 @@
 - Умный онбординг + настройка GPU-инференса (PR #4)
 - Vulkan GPU-инференс для llama-helper на Windows (PR #3)
 
-[0.4.1]: https://github.com/Godila/Ru-Meetily/releases/tag/v0.4.1
-[0.4.0]: https://github.com/Godila/Ru-Meetily/releases/tag/v0.4.0
+[0.5.0]: https://github.com/Godila/convoic/releases/tag/v0.5.0
+[0.4.1]: https://github.com/Godila/convoic/releases/tag/v0.4.1
+[0.4.0]: https://github.com/Godila/convoic/releases/tag/v0.4.0

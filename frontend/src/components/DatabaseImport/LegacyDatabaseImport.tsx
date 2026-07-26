@@ -42,7 +42,7 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
         setDetectedPath(dbPath);
         setImportState('idle');
       } else {
-        setErrorMessage('База данных не найдена в выбранном расположении. Выберите папку Ru-Meetily, папку бэкенда или файл базы данных напрямую.');
+        setErrorMessage('База данных не найдена в выбранном расположении. Выберите папку Convoic, папку бэкенда или файл базы данных напрямую.');
         setDetectedPath(null);
         setImportState('error');
         setTimeout(() => setImportState('idle'), 3000);
@@ -119,7 +119,7 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
     <Dialog open={isOpen} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[600px]" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="text-2xl">Добро пожаловать в Ru-Meetily!</DialogTitle>
+          <DialogTitle className="text-2xl">Добро пожаловать в Convoic!</DialogTitle>
           <DialogDescription className="text-base pt-2">
             У вас есть данные от предыдущей установки Meetily?
           </DialogDescription>

@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
-// Vitest configuration for the Ru-Meetily frontend.
+// Vitest configuration for the Convoic frontend.
 //
 // - `@/` alias mirrors tsconfig.json `paths` so imports like
 //   `@/lib/summary-languages` resolve in tests.

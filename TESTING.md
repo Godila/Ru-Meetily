@@ -1,6 +1,6 @@
 # TESTING — рекомендации по быстрой итерации без переустановки бандла
 
-Этот документ — для разработки Ru-Meetily на Windows. Цель: перестать
+Этот документ — для разработки Convoic на Windows. Цель: перестать
 переустанавливать `.exe`/`.msi` после каждого изменения.
 
 ## TL;DR — повседневный цикл
@@ -25,7 +25,7 @@ pnpm run tauri:dev      # НЕ clean_run_windows.bat
    `CLAUDE.md` способ `$env:RUST_LOG="debug"; ./clean_run_windows.bat`
    **не работает** — `main()` безусловно перезаписывает переменную.
 3. **Портативный `.exe` уже существует** после `pnpm run tauri:build`:
-   `frontend/src-tauri/target/release/Ru-Meetily.exe`. Можно запускать
+   `frontend/src-tauri/target/release/Convoic.exe`. Можно запускать
    **без установки**. (Нужны рядом sidecar-бинари `binaries/ffmpeg.exe`,
    `binaries/llama-helper.exe` и bundled `templates/*.json` — они уже в
    `target/release/` после сборки.)
@@ -74,7 +74,7 @@ RTF (real-time factor).
 
 ```bash
 TEST_AUDIO_PATH=C:/path/to/sample.wav \
-GIGAAM_MODELS_DIR=C:/Users/geor/AppData/Roaming/Meetily/models \
+GIGAAM_MODELS_DIR=C:/Users/geor/AppData/Roaming/Convoic/models \
   cargo test --manifest-path frontend/src-tauri/Cargo.toml \
     gigaam_engine::tests::test_transcribe_real_audio -- \
     --ignored --nocapture
@@ -85,7 +85,7 @@ Env-переменные:
   использует FFmpeg sidecar).
 - `GIGAAM_MODELS_DIR` (опц.) — **родитель** поддиректории `gigaam` с моделями.
   По умолчанию движок берёт платформенный AppData (на Windows это
-  `%APPDATA%\Meetily\models`). Передавай, если модели лежат в нестандартном
+  `%APPDATA%\Convoic\models`). Передавай, если модели лежат в нестандартном
   месте. Движок сам добавит `gigaam` к пути.
 - `GIGAAM_MODEL_NAME` (опц.) — имя модели из каталога; по умолчанию
   `gigaam-v3-rnnt-int8`.

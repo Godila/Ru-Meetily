@@ -53,7 +53,7 @@ pub fn show_console() -> Result<String, String> {
             .arg(r#"
                 tell application "Terminal"
                     activate
-                    do script "log stream --process meetily --level info --style compact"
+                    do script "log stream --process convoic --level info --style compact"
                 end tell
             "#)
             .spawn()
@@ -91,7 +91,7 @@ pub fn hide_console() -> Result<String, String> {
                 tell application "Terminal"
                     set windowList to windows
                     repeat with aWindow in windowList
-                        if contents of selected tab of aWindow contains "log stream --process meetily" then
+                        if contents of selected tab of aWindow contains "log stream --process convoic" then
                             close aWindow
                         end if
                     end repeat
@@ -133,7 +133,7 @@ pub fn toggle_console() -> Result<String, String> {
                 tell application "Terminal"
                     set windowList to windows
                     repeat with aWindow in windowList
-                        if contents of selected tab of aWindow contains "log stream --process meetily" then
+                        if contents of selected tab of aWindow contains "log stream --process convoic" then
                             return "found"
                         end if
                     end repeat

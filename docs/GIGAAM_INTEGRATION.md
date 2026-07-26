@@ -11,12 +11,12 @@ Like Parakeet, GigaAM runs fully **in-process on Rust via `ort`** (ONNX Runtime)
 ## Why this works
 
 The ONNX conversion of GigaAM was published by the **same author**
-(`istupakov`) who produced the Parakeet ONNX models Meetily already ships. The
+(`istupakov`) who produced the Parakeet ONNX models Convoic already ships. The
 two share the same `ort` runtime and a very similar file layout. The CTC
 variant is the simplest possible ASR integration: one ONNX file, a single
 forward pass, and a trivial argmax+collapse decode (no RNN-T state machine).
 
-Licenses are compatible for forking: Meetily (MIT) + GigaAM weights (MIT) +
+Licenses are compatible for forking: Convoic (MIT) + GigaAM weights (MIT) +
 `onnx-asr` reference (MIT).
 
 ## Files added
@@ -57,7 +57,7 @@ Stored under `<app_data_dir>/models/gigaam/gigaam-v3-ctc-int8/`.
 ## Build & verify
 
 ### Prerequisites (Windows, MSVC toolchain)
-Meetily's `whisper-rs` dependency needs a C toolchain and libclang:
+Convoic's `whisper-rs` dependency needs a C toolchain and libclang:
 - **Rust** (MSVC host: `x86_64-pc-windows-msvc`).
 - **MSVC Build Tools 2022** (Visual Studio Build Tools with the "Desktop
   development with C++" workload — provides `cl.exe`/`link.exe`).
@@ -72,14 +72,14 @@ Meetily's `whisper-rs` dependency needs a C toolchain and libclang:
   GigaAM.
 
 > Note: `whisper-rs 0.13.2` vs the bundled `whisper.cpp` can mismatch on the
-> `whisper_full_params` layout. That is a pre-existing Meetily build issue on
+> `whisper_full_params` layout. That is a pre-existing Convoic build issue on
 > some toolchain combos, not related to GigaAM. It only affects the Whisper
 > engine; GigaAM and Parakeet do not depend on whisper-rs.
 
 ### Verified during development
 The four GigaAM Rust files (`preprocessor.rs`, `model.rs`, `gigaam_engine.rs`,
 `gigaam_provider.rs`) were compile-checked **in isolation** with the exact
-dependency versions Meetily pins (`ort = 2.0.0-rc.10`, `ndarray = 0.16`,
+dependency versions Convoic pins (`ort = 2.0.0-rc.10`, `ndarray = 0.16`,
 `realfft = 3.4.0`) plus tauri/api/tray stubs. All compile cleanly.
 `commands.rs` is a near-verbatim copy of `parakeet_engine/commands.rs` (its
 call to `api_get_transcript_config` is byte-identical to the Parakeet version
