@@ -153,6 +153,11 @@ fn build_summary_result_json(
 /// Parses a `summary_processes.result` JSON blob and extracts a cached English
 /// summary only when it was produced from exactly the same source inputs and
 /// the user is switching to a different non-English target language.
+///
+/// Kept as a no-op fallback for back-compat with DB rows written before the
+/// en→ru removal (single-pass Russian generation now). New summaries are not
+/// cached here, so this function is dead code unless re-introduced.
+#[allow(dead_code)]
 fn extract_cached_english_markdown(
     raw: &str,
     expected_source: &SummaryCacheSource,
@@ -440,17 +445,19 @@ impl SummaryService {
         let app_data_dir = _app.path().app_data_dir().ok();
 
         if let Some(code) = &summary_language {
-            info!("📝 Summary language preference: {}", code);
+            info!("📝 Summary language preference: {} (ignored — output is always Russian)", code);
         }
 
+        // Note: detected transcript language no longer drives output language
+        // (single-pass Russian generation). Kept as an informational log only.
         let detected_summary_language =
             Self::read_detected_summary_language(&pool, &meeting_id)
                 .await
                 .or_else(|| Self::detect_summary_language_from_text(&text));
-
         if let Some(code) = &detected_summary_language {
-            info!("📝 Detected transcript summary language: {}", code);
+            info!("📝 Detected transcript language: {}", code);
         }
+        drop(detected_summary_language);
 
         let template = match templates::get_template(&template_id) {
             Ok(template) => template,
@@ -476,33 +483,6 @@ impl SummaryService {
             custom_openai_temperature,
             custom_openai_top_p,
         );
-
-        let cached_english = match SummaryProcessesRepository::get_summary_data(&pool, &meeting_id).await {
-            Err(e) => {
-                warn!(
-                    "Failed to load prior summary row for cache lookup (meeting_id={}): {}. Falling back to full pass-1 generation.",
-                    meeting_id, e
-                );
-                None
-            }
-            Ok(None) => None,
-            Ok(Some(process)) => process.result.and_then(|raw| {
-                match extract_cached_english_markdown(
-                    &raw,
-                    &cache_source,
-                    summary_language.as_deref(),
-                ) {
-                    Ok(opt) => opt,
-                    Err(e) => {
-                        warn!(
-                            "Cached summary result for meeting_id={} is not valid JSON ({}); ignoring cache.",
-                            meeting_id, e
-                        );
-                        None
-                    }
-                }
-            }),
-        };
 
         let client = reqwest::Client::new();
         // Read the GPU-toggle preference once for the whole summary. Fail-open
@@ -531,9 +511,6 @@ impl SummaryService {
             custom_openai_top_p,
             app_data_dir.as_ref(),
             Some(&cancellation_token),
-            summary_language.as_deref(),
-            detected_summary_language.as_deref(),
-            cached_english.as_deref(),
             force_cpu,
         )
         .await;
@@ -544,7 +521,7 @@ impl SummaryService {
         Self::cleanup_cancellation_token(&meeting_id);
 
         match result {
-            Ok((final_markdown, english_markdown, num_chunks)) => {
+            Ok((final_markdown, num_chunks)) => {
                 info!(
                     "✓ Successfully processed {} chunks for meeting_id: {}. Duration: {:.2}s",
                     num_chunks, meeting_id, duration
@@ -564,9 +541,12 @@ impl SummaryService {
                     }
                 }
 
+                // Single-pass generation now produces the Russian summary directly;
+                // pass the same markdown as the english_cache field for back-compat
+                // with older clients that may still read it.
                 let result_json = build_summary_result_json(
                     &final_markdown,
-                    &english_markdown,
+                    &final_markdown,
                     cache_source,
                     summary_language.as_deref(),
                 );
