@@ -400,7 +400,7 @@ RUST_LOG=app_lib::audio=debug pnpm run tauri:dev
 
 ## MCP Tooling Rules (MANDATORY — read every session)
 
-This project has three MCP servers wired into the ZCode config (`C:\Users\geor\.zcode\cli\config.json` → `mcp.servers`). Using them is not optional — they replace slower paths (manual `grep`+`Read` loops, forgetting past decisions, losing local-only knowledge). Read this section at session start and prefer these tools.
+This project has two MCP servers wired into the ZCode config (`C:\Users\geor\.zcode\cli\config.json` → `mcp.servers`). Using them is not optional — they replace slower paths (manual `grep`+`Read` loops, forgetting past decisions). Read this section at session start and prefer these tools.
 
 ### codegraph — code intelligence knowledge graph
 
@@ -432,10 +432,6 @@ agentmemory > /tmp/agentmemory.log 2>&1 & sleep 8 && agentmemory status
 Only treat `memory_recall` results as complete after confirming the worker is healthy. If unsure whether a save persisted, re-`recall` it immediately and verify it appears.
 
 **When to save:** at the end of any non-trivial task — architectural decisions, root-caused bugs + their fix, environment gotchas, reproduction steps, project status. Tag with `project: "ru-meetily"`, `concepts`, `files`, and a meaningful `type` (`architecture` / `bug` / `workflow` / `fact`).
-
-### edgequake — document/knowledge-graph RAG (optional)
-
-**Tools:** `mcp__edgequake__query`, `mcp__edgequake__document_upload`, `mcp__edgequake__graph_search_*`. Use only when you specifically need to ingest an external document (PDF/MD/TXT) and RAG-query it — not for codebase questions (use codegraph for those).
 
 ### Order of preference for a code question
 
