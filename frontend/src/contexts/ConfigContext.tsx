@@ -105,10 +105,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     ollamaEndpoint: null
   });
 
-  // Transcript model configuration state
+  // Transcript model configuration state. Convoic defaults to GigaAM (Russian STT).
   const [transcriptModelConfig, setTranscriptModelConfig] = useState<TranscriptModelProps>({
-    provider: 'parakeet',
-    model: 'parakeet-tdt-0.6b-v3-int8',
+    provider: 'gigaam',
+    model: 'gigaam-v3-rnnt-int8',
     apiKey: null
   });
 
@@ -199,8 +199,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         if (config) {
           console.log('[ConfigContext] Loaded saved transcript config:', config);
           setTranscriptModelConfig({
-            provider: config.provider || 'parakeet',
-            model: config.model || 'parakeet-tdt-0.6b-v3-int8',
+            provider: config.provider || 'gigaam',
+            model: config.model || 'gigaam-v3-rnnt-int8',
             apiKey: config.apiKey || null
           });
         }

@@ -123,9 +123,9 @@ export default function AnalyticsDataModal({ isOpen, onClose, onConfirmDisable }
             <pre className="text-xs text-gray-700 overflow-x-auto">
               {`{
   "event": "meeting_ended",
-  "app_version": "0.4.0",
-  "transcription_provider": "parakeet",
-  "transcription_model": "parakeet-tdt-0.6b-v3-int8",
+  "app_version": "0.5.2",
+  "transcription_provider": "gigaam",
+  "transcription_model": "gigaam-v3-rnnt-int8",
   "summary_provider": "ollama",
   "summary_model": "llama3.2:latest",
   "total_duration_seconds": "125.5",

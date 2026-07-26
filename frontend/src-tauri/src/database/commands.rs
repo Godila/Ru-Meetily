@@ -204,11 +204,12 @@ pub async fn initialize_fresh_database(app: AppHandle) -> Result<(), String> {
         error!("Failed to set default summary model config: {}", e);
     }
 
-    // Default Transcription Model: Parakeet
+    // Default Transcription Model: GigaAM (Convoic is a Russian-focused fork;
+    // GigaAM is the model downloaded during onboarding).
     if let Err(e) = crate::database::repositories::setting::SettingsRepository::save_transcript_config(
         pool,
-        "parakeet",
-        crate::config::DEFAULT_PARAKEET_MODEL,
+        "gigaam",
+        crate::config::DEFAULT_GIGAAM_MODEL,
     ).await {
         error!("Failed to set default transcription model config: {}", e);
     }

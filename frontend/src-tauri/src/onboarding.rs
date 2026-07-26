@@ -201,16 +201,18 @@ pub async fn complete_onboarding<R: Runtime>(
         info!("Seeded use_gpu default: {}", default_use_gpu);
     }
 
-    // Save transcription model config (parakeet provider) - always parakeet
+    // Save transcription model config. Convoic defaults to GigaAM (Russian STT),
+    // which is the model downloaded during onboarding. Parakeet remains available
+    // as an alternative the user can switch to in Settings.
     if let Err(e) = SettingsRepository::save_transcript_config(
         pool,
-        "parakeet",
-        crate::config::DEFAULT_PARAKEET_MODEL,
+        "gigaam",
+        crate::config::DEFAULT_GIGAAM_MODEL,
     ).await {
         error!("Failed to save transcription model config: {}", e);
         return Err(format!("Failed to save transcription model config: {}", e));
     }
-    info!("Saved transcription model config: provider=parakeet, model={}", crate::config::DEFAULT_PARAKEET_MODEL);
+    info!("Saved transcription model config: provider=gigaam, model={}", crate::config::DEFAULT_GIGAAM_MODEL);
 
     // Step 2: Only NOW mark onboarding as complete (after DB operations succeed)
     let mut status = load_onboarding_status(&app)
