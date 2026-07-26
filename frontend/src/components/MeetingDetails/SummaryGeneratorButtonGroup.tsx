@@ -21,14 +21,13 @@ import { Sparkles, Settings, Loader2, FileText, Check, Square, Pencil, Plus } fr
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
-import { useState, useEffect, useRef, ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { isOllamaNotInstalledError } from '@/lib/utils';
 import { BuiltInModelInfo } from '@/lib/builtin-ai';
 import { TemplateEditorDialog } from './TemplateEditorDialog';
 import type { EditorTarget, TemplateDraft, TemplateInfo } from '@/hooks/meeting-details/useTemplates';
 
 export interface SummaryGeneratorButtonGroupProps {
-  languageSlot?: ReactNode;
   modelConfig: ModelConfig;
   setModelConfig: (config: ModelConfig | ((prev: ModelConfig) => ModelConfig)) => void;
   onSaveModelConfig: (config?: ModelConfig) => Promise<void>;
@@ -73,7 +72,6 @@ export function SummaryGeneratorButtonGroup({
   hasSummary = false,
   isModelConfigLoading = false,
   onOpenModelSettings,
-  languageSlot,
   editorState
 }: SummaryGeneratorButtonGroupProps) {
   const [isCheckingModels, setIsCheckingModels] = useState(false);
@@ -307,8 +305,6 @@ export function SummaryGeneratorButtonGroup({
           )}
         </Button>
       )}
-
-      {languageSlot}
 
       {/* Settings button */}
       <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
