@@ -191,6 +191,16 @@ pub async fn complete_onboarding<R: Runtime>(
     }
     info!("Saved builtin-ai model config: model={}", model);
 
+    // Seed the GPU-toggle default: ON iff a GPU was detected. Best-effort —
+    // a failure here must not block onboarding completion.
+    let default_use_gpu =
+        crate::audio::hardware_detector::HardwareProfile::detect().has_gpu_acceleration;
+    if let Err(e) = SettingsRepository::set_use_gpu(pool, default_use_gpu).await {
+        warn!("Failed to seed use_gpu default: {}", e);
+    } else {
+        info!("Seeded use_gpu default: {}", default_use_gpu);
+    }
+
     // Save transcription model config (parakeet provider) - always parakeet
     if let Err(e) = SettingsRepository::save_transcript_config(
         pool,

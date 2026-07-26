@@ -76,6 +76,10 @@ pub struct ModelConfig {
     pub api_key: Option<String>,
     #[serde(rename = "ollamaEndpoint")]
     pub ollama_endpoint: Option<String>,
+    /// GPU-toggle preference for the built-in AI provider. Omitted from the
+    /// JSON when None so old frontends that don't know the field keep working.
+    #[serde(rename = "useGpu", skip_serializing_if = "Option::is_none")]
+    pub use_gpu: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -484,12 +488,19 @@ pub async fn api_get_model_config<R: Runtime>(
             match SettingsRepository::get_api_key(pool, &config.provider).await {
                 Ok(api_key) => {
                     log_info!("Successfully retrieved model config and API key.");
+                    // Resolve the effective GPU preference (None in DB → hardware default).
+                    let use_gpu = SettingsRepository::get_use_gpu(pool)
+                        .await
+                        .ok()
+                        .map(Some)
+                        .unwrap_or(None);
                     Ok(Some(ModelConfig {
                         provider: config.provider,
                         model: config.model,
                         whisper_model: config.whisper_model,
                         api_key,
                         ollama_endpoint: config.ollama_endpoint,
+                        use_gpu,
                     }))
                 }
                 Err(e) => {
@@ -568,6 +579,34 @@ pub async fn api_save_model_config<R: Runtime>(
     Ok(
         serde_json::json!({ "status": "success", "message": "Model configuration saved successfully" }),
     )
+}
+
+/// Persist the GPU-toggle preference and force the sidecar to reload on the
+/// next generation so the new value takes effect immediately on a warm sidecar.
+#[tauri::command]
+pub async fn api_set_use_gpu<R: Runtime>(
+    _app: AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    use_gpu: bool,
+    _auth_token: Option<String>,
+) -> Result<serde_json::Value, String> {
+    log_info!("api_set_use_gpu called: use_gpu={}", use_gpu);
+    let pool = state.db_manager.pool();
+
+    if let Err(e) = SettingsRepository::set_use_gpu(pool, use_gpu).await {
+        log_error!("Failed to save use_gpu: {}", e);
+        return Err(e.to_string());
+    }
+
+    // Force the sidecar to re-evaluate GPU layers on the next generate call.
+    // Without this, a warm sidecar keeps the cached model with the old
+    // n_gpu_layers and the toggle has no visible effect until idle timeout.
+    if let Err(e) = crate::summary::summary_engine::client::shutdown_sidecar_gracefully().await {
+        log_warn!("Failed to shutdown sidecar after use_gpu change: {}", e);
+    }
+
+    log_info!("✅ use_gpu={} persisted, sidecar will reload on next generation", use_gpu);
+    Ok(serde_json::json!({ "status": "success", "useGpu": use_gpu }))
 }
 
 #[tauri::command]

@@ -37,6 +37,11 @@ enum Request {
         repeat_penalty: Option<f32>,
         penalty_last_n: Option<i32>,
         stop_tokens: Option<Vec<String>>,
+        // Inference-device override.
+        // None/Some(false) → auto (sidecar uses VRAM heuristic).
+        // Some(true) → force CPU (n_gpu_layers = 0).
+        // KEEP IN SYNC with the duplicate enum in llama-helper/src/main.rs.
+        force_cpu: Option<bool>,
     },
 }
 
@@ -135,6 +140,7 @@ pub async fn generate_with_builtin(
     model_name: &str,
     system_prompt: &str,
     user_prompt: &str,
+    force_cpu: bool,
     cancellation_token: Option<&CancellationToken>,
 ) -> Result<String> {
     // Check cancellation at start
@@ -193,6 +199,7 @@ pub async fn generate_with_builtin(
         repeat_penalty: Some(sampling.repeat_penalty),
         penalty_last_n: Some(sampling.penalty_last_n),
         stop_tokens: Some(sampling.stop_tokens),
+        force_cpu: Some(force_cpu),
     };
 
     let request_json = serde_json::to_string(&request)?;
@@ -317,6 +324,7 @@ mod tests {
             repeat_penalty: Some(1.05),
             penalty_last_n: Some(256),
             stop_tokens: Some(vec!["<end_of_turn>".to_string()]),
+            force_cpu: Some(false),
         };
 
         let json = serde_json::to_string(&request).unwrap();
@@ -328,6 +336,9 @@ mod tests {
         assert!(json.contains("\"frequency_penalty\":0.0"));
         assert!(json.contains("\"repeat_penalty\":1.05"));
         assert!(json.contains("\"penalty_last_n\":256"));
+        // force_cpu must round-trip through serialization (catches enum drift
+        // between this client and the sidecar's duplicate Request enum).
+        assert!(json.contains("\"force_cpu\":false"));
     }
 
     #[test]
