@@ -96,6 +96,10 @@ pub struct Setting {
     #[sqlx(rename = "customOpenAIConfig")]
     #[serde(rename = "customOpenAIConfig")]
     pub custom_openai_config: Option<String>,
+    /// GPU-toggle preference for the built-in AI (llama-helper) inference.
+    /// `None` (NULL) = "default" → resolved at read time to ON iff a GPU is
+    /// detected. `Some(0)` = user disabled GPU (force CPU). `Some(1)` = on.
+    pub use_gpu: Option<i64>,
 }
 
 impl Setting {

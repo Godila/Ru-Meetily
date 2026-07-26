@@ -139,6 +139,44 @@ impl SettingsRepository {
         Ok(api_key)
     }
 
+    /// Resolve the effective GPU-toggle preference.
+    ///
+    /// `None` in the DB (never set) resolves to the hardware default: GPU is on
+    /// iff `HardwareProfile::detect()` reports a GPU. `Some(0)` → off, anything
+    /// else → on. Fail-open: a DB error returns `true` (GPU on) so we don't
+    /// silently downgrade users who had GPU acceleration.
+    pub async fn get_use_gpu(pool: &SqlitePool) -> std::result::Result<bool, sqlx::Error> {
+        let raw: Option<i64> =
+            sqlx::query_scalar("SELECT use_gpu FROM settings WHERE id = '1' LIMIT 1")
+                .fetch_optional(pool)
+                .await?;
+        Ok(match raw {
+            None => crate::audio::hardware_detector::HardwareProfile::detect().has_gpu_acceleration,
+            Some(0) => false,
+            Some(_) => true,
+        })
+    }
+
+    /// Persist the GPU-toggle preference (idempotent upsert on the singleton
+    /// row). The column is nullable; this always writes an explicit value.
+    pub async fn set_use_gpu(
+        pool: &SqlitePool,
+        use_gpu: bool,
+    ) -> std::result::Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO settings (id, provider, model, whisperModel, use_gpu)
+            VALUES ('1', 'openai', 'gpt-4o-2024-11-20', 'large-v3', $1)
+            ON CONFLICT(id) DO UPDATE SET
+                use_gpu = excluded.use_gpu
+            "#,
+        )
+        .bind(use_gpu as i64)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn get_transcript_config(
         pool: &SqlitePool,
     ) -> std::result::Result<Option<TranscriptSetting>, sqlx::Error> {

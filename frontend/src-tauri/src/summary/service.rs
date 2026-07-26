@@ -505,6 +505,15 @@ impl SummaryService {
         };
 
         let client = reqwest::Client::new();
+        // Read the GPU-toggle preference once for the whole summary. Fail-open
+        // to GPU-on so a transient DB error doesn't silently downgrade users.
+        let force_cpu = match provider {
+            crate::summary::llm_client::LLMProvider::BuiltInAI => {
+                !SettingsRepository::get_use_gpu(&pool).await.unwrap_or(true)
+            }
+            // Non-builtin providers run remotely; force_cpu is irrelevant.
+            _ => false,
+        };
         let result = generate_meeting_summary(
             &client,
             &provider,
@@ -525,6 +534,7 @@ impl SummaryService {
             summary_language.as_deref(),
             detected_summary_language.as_deref(),
             cached_english.as_deref(),
+            force_cpu,
         )
         .await;
 

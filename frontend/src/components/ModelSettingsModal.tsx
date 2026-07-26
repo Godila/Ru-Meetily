@@ -43,6 +43,9 @@ export interface ModelConfig {
   maxTokens?: number | null;
   temperature?: number | null;
   topP?: number | null;
+  // GPU-toggle preference for the built-in AI (llama-helper) provider.
+  // Omitted from older API responses; defaults to hardware-detected at read.
+  useGpu?: boolean | null;
 }
 
 interface OllamaModel {

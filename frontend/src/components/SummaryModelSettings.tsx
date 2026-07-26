@@ -7,6 +7,7 @@ import { ModelConfig, ModelSettingsModal } from '@/components/ModelSettingsModal
 import { SummaryLanguageSettings } from '@/components/SummaryLanguageSettings';
 import { Switch } from './ui/switch';
 import { useConfig } from '@/contexts/ConfigContext';
+import type { HardwareProfileInfo } from '@/types/hardware';
 
 interface SummaryModelSettingsProps {
   refetchTrigger?: number; // Change this to trigger refetch
@@ -20,6 +21,10 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
     apiKey: null,
     ollamaEndpoint: null
   });
+
+  const [useGpu, setUseGpu] = useState<boolean>(true);
+  const [hasGpu, setHasGpu] = useState<boolean>(false);
+  const [gpuName, setGpuName] = useState<string | null>(null);
 
   const { isAutoSummary, toggleIsAutoSummary } = useConfig();
 
@@ -59,11 +64,25 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
           }
         }
         setModelConfig(data);
+        // useGpu is optional in the response; default to true when absent.
+        if (data.useGpu !== undefined && data.useGpu !== null) {
+          setUseGpu(data.useGpu);
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch model config:', error);
+      console.error('Failed to load model settings', error);
       toast.error('Failed to load model settings');
     }
+  }, []);
+
+  // Detect hardware once on mount to drive the GPU-toggle availability.
+  useEffect(() => {
+    invoke<HardwareProfileInfo>('api_get_hardware_profile')
+      .then((info) => {
+        setHasGpu(info.hasGpu);
+        setGpuName(info.gpuName);
+      })
+      .catch((e) => console.warn('Hardware detection failed:', e));
   }, []);
 
   // Fetch on mount
@@ -122,6 +141,19 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
     }
   };
 
+  const toggleGpu = async (enabled: boolean) => {
+    const prev = useGpu;
+    setUseGpu(enabled); // optimistic
+    try {
+      await invoke('api_set_use_gpu', { useGpu: enabled });
+      toast.success(enabled ? 'GPU включён' : 'Принудительный CPU');
+    } catch (e) {
+      setUseGpu(prev); // rollback
+      console.error('Failed to set use_gpu', e);
+      toast.error('Не удалось изменить настройку GPU');
+    }
+  };
+
   return (
     <div className='flex flex-col gap-4'>
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -131,6 +163,28 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
             <p className="text-sm text-gray-600">Автоматически генерировать резюме после завершения встречи (остановки записи)</p>
           </div>
           <Switch checked={isAutoSummary} onCheckedChange={toggleIsAutoSummary} />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="pr-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              GPU-ускорение локальных моделей
+            </h3>
+            <p className="text-sm text-gray-600">
+              {hasGpu
+                ? gpuName
+                  ? `Использовать видеокарту «${gpuName}» для генерации резюме. Выключите, чтобы принудительно задействовать CPU (n_gpu_layers=0).`
+                  : 'Использовать GPU для генерации резюме. Выключите, чтобы принудительно задействовать CPU (n_gpu_layers=0).'
+                : 'GPU не обнаружен — локальные модели работают на CPU. Переключатель недоступен.'}
+            </p>
+          </div>
+          <Switch
+            checked={useGpu && hasGpu}
+            onCheckedChange={toggleGpu}
+            disabled={!hasGpu}
+          />
         </div>
       </div>
 
