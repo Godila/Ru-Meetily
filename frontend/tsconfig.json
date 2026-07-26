@@ -25,6 +25,13 @@
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
-    "src-tauri"
+    "src-tauri",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "tsconfig.vitest.json"
   ]
 }

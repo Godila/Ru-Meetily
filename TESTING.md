@@ -95,10 +95,46 @@ Env-переменные:
 
 ### Frontend
 
-Фронтенд-тестов **нет вообще** (0 `*.test.ts(x)`, нет jest/vitest/playwright).
+Тесты — **vitest** + `@testing-library/react` + jsdom. 57 тестов в 6 файлах:
+
+```bash
+cd frontend
+pnpm test                  # разовый прогон
+pnpm test:watch            # watch-режим
+pnpm test:ui               # браузерный UI vitest
+pnpm run typecheck:tests   # типы тестов (tsconfig.vitest.json)
+```
+
+Покрытие:
+- `src/lib/__tests__/utils.test.ts` — `cn`, `isOllamaNotInstalledError`
+- `src/lib/__tests__/summary-languages.test.ts` — `normaliseLanguageCode`,
+  `labelForCode`, константы
+- `src/lib/__tests__/summary-language-preferences.test.ts` — pinned default
+  localStorage (чтение/запись/normalisation)
+- `src/lib/__tests__/blocknote-markdown.test.ts` — `blocksToMarkdownSafely`
+  (успех/fallback/без fallback)
+- `src/lib/__tests__/onboarding-summary-model.test.ts` — выбор модели онбординга
+  и размеры
+- `src/hooks/meeting-details/__tests__/useTemplates.test.ts` — хук CRUD:
+  initial load, selection, editor lifecycle, create/update/delete/json (invoke
+  замокан через `vi.hoisted` + `vi.mock('@tauri-apps/api/core')`)
+
+**Паттерн для тестирования Tauri-хуков:** мокаем `@tauri-apps/api/core` →
+`invoke` через `vi.hoisted` (обязательно, иначе хойстинг `vi.mock` ломает
+связь), stub'им `sonner` (порталы) и любой transitive-импорт с Tauri-вызовами
+(`@/lib/analytics`). Mount-effects флешим через `await setTimeout(50)` внутри
+`act`, а НЕ `vi.waitFor` (с ним бывают рейсы с React-batching).
+
+Конфигурация:
+- `vitest.config.ts` — jsdom env, `@/` alias (зеркало tsconfig `paths`),
+  setup `vitest.setup.ts` (jest-dom matchers, matchMedia/ResizeObserver stubs)
+- `tsconfig.json` — исключает тесты и vitest-файлы (Next.js их не компилирует)
+- `tsconfig.vitest.json` — включает только тесты с vitest-глобалами
+- `tsconfig.ci.json` — для CI: src без тестов
+
 Next.js dev-сервер на `localhost:3118` можно открывать в обычном браузере для
 отладки UI/CSS — но любой путь, вызывающий `invoke('...')`, упадёт вне Tauri
-webview. Для UI-логики нужен vitest с моками `@tauri-apps/api` (будущая задача).
+webview. Для такой логики используй vitest с моками.
 
 ### DevTools
 
@@ -130,12 +166,8 @@ webview. Для UI-логики нужен vitest с моками `@tauri-apps/a
          - run: cd frontend && npx tsc --noEmit
    ```
 
-3. **`typecheck`/`clippy` npm-скрипты** — в `package.json` нет ни `test`, ни
-   `typecheck`, ни `clippy`. Добавь:
-   ```json
-   "typecheck": "tsc --noEmit",
-   "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml"
-   ```
+3. **`typecheck`/`test` npm-скрипты** — ✅ **СДЕЛАНО.** В `package.json`
+   добавлены `typecheck`, `typecheck:tests`, `test`, `test:watch`, `test:ui`.
 
 4. **GigaAM транскрипционный harness** — ✅ **СДЕЛАНО.** Тест
    `gigaam_engine::tests::test_transcribe_real_audio` грузит движок по
@@ -143,8 +175,12 @@ webview. Для UI-логики нужен vitest с моками `@tauri-apps/a
    Рефакторинга `GigaamEngine` не потребовалось — нужный конструктор уже был.
    См. выше раздел «Интеграционный тест с реальным аудио (GigaAM)».
 
-5. **Frontend-тесты** — vitest + mock `@tauri-apps/api`. Начать с
-   `useTemplates` (чистая логика + invoke) и `SidebarProvider`.
+
+5. **Frontend-тесты** — ✅ **СДЕЛАНО.** vitest + `@testing-library/react` +
+   jsdom, 57 тестов в 6 файлах. См. выше раздел «Frontend». `SidebarProvider`
+   сознательно отложен — он тянет `useRecordingState`, `usePathname`,
+   `useRouter` и множество `invoke`, его изолированный тест дорогой и хрупкий;
+   `useTemplates` покрывает тот же Tauri-hook-паттерн и был приоритетнее.
 
 ## Что НЕ делать
 

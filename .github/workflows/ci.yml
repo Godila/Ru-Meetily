@@ -78,7 +78,7 @@ jobs:
         continue-on-error: true
 
   frontend:
-    name: Frontend (tsc)
+    name: Frontend (tsc + vitest)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -110,9 +110,18 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      # Type-check src/ only. The repo has tests/lib/*.test.ts importing from
-      # "bun:test" (a pre-existing orphan test file), which tsc would flag.
-      # tsconfig.ci.json extends the base config and excludes tests, so CI
-      # stays green without touching the legacy file or the dev tsconfig.
-      - name: Type-check (src only)
+      # Type-check src/ (production code) and tests separately. tsconfig.ci.json
+      # excludes test files + vitest config; tsconfig.vitest.json includes only
+      # test files with vitest globals available. Splitting keeps each surface
+      # focused and avoids pulling test-only types into the build.
+      - name: Type-check (src)
         run: npx tsc --noEmit -p tsconfig.ci.json
+
+      - name: Type-check (tests)
+        run: npx tsc --noEmit -p tsconfig.vitest.json
+
+      # Vitest covers pure utility/lib functions and the useTemplates hook
+      # (invoke mocked). jsdom env + matchMedia/ResizeObserver stubs come from
+      # vitest.setup.ts. No Tauri backend is needed — every `invoke` is mocked.
+      - name: Run vitest
+        run: pnpm test

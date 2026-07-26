@@ -1,0 +1,18 @@
+# pnpm settings (pnpm 11+ no longer reads the `pnpm` field from package.json —
+# see https://pnpm.io/settings). overrides + allowBuilds live here now.
+
+# Pin prosemirror sub-packages so the rich-text editors (BlockNote/Remirror/
+# TipTap) share one version and don't ship duplicate copies.
+overrides:
+  prosemirror-model: 1.25.3
+  prosemirror-state: 1.4.3
+  prosemirror-view: 1.41.3
+  prosemirror-transform: 1.10.4
+  prosemirror-tables: 1.8.1
+
+# esbuild ships a native binary built via a postinstall script. It is a build
+# dependency of vitest (and indirectly of Next.js). pnpm 11 uses `allowBuilds`
+# (a name->bool map) instead of the old `onlyBuiltDependencies` list; with
+# `strictDepBuilds` defaulting to true, an unlisted build script FAILS install.
+allowBuilds:
+  esbuild: true

@@ -25,7 +25,12 @@
         "tauri:build:coreml": "tauri build -- --features coreml",
         "tauri:build:openblas": "tauri build -- --features openblas",
         "tauri:build:hipblas": "tauri build -- --features hipblas",
-        "lint": "next lint"
+        "lint": "next lint",
+        "typecheck": "tsc --noEmit",
+        "typecheck:tests": "tsc --noEmit -p tsconfig.vitest.json",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:ui": "vitest --ui"
     },
     "dependencies": {
         "@blocknote/core": "0.36.0",
@@ -86,27 +91,24 @@
         "tailwindcss-animate": "^1.0.7",
         "zod": "^3.25.71"
     },
-    "pnpm": {
-        "overrides": {
-            "prosemirror-model": "1.25.3",
-            "prosemirror-state": "1.4.3",
-            "prosemirror-view": "1.41.3",
-            "prosemirror-transform": "1.10.4",
-            "prosemirror-tables": "1.8.1"
-        }
-    },
     "devDependencies": {
         "@tailwindcss/typography": "^0.5.15",
         "@tauri-apps/cli": "^2.1.0",
         "@tauri-apps/plugin-fs": "~2.4.0",
+        "@testing-library/jest-dom": "^6.10.0",
+        "@testing-library/react": "^16.3.2",
         "@types/node": "^20",
         "@types/react": "^18.3.18",
         "@types/react-dom": "^18.3.5",
+        "@vitejs/plugin-react": "^4.3.4",
+        "@vitest/ui": "^2.1.8",
         "autoprefixer": "^10.0.1",
         "concurrently": "^8.2.2",
+        "jsdom": "^25.0.1",
         "postcss": "^8",
         "tailwindcss": "^3.4.1",
         "typescript": "^5.7.2",
+        "vitest": "^2.1.8",
         "wait-on": "^7.2.0"
     }
 }
