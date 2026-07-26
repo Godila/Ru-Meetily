@@ -17,11 +17,12 @@ export function About() {
             <div className="text-center">
                 <div className="mb-3">
                     <Image
-                        src="icon_128x128.png"
+                        src="/convoic_icon_128.png"
                         alt="Convoic Logo"
-                        width={64}
-                        height={64}
+                        width={96}
+                        height={96}
                         className="mx-auto"
+                        priority
                     />
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">Convoic</h1>

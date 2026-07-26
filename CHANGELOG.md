@@ -4,6 +4,29 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версионирование — [SemVer](https://semver.org/lang/ru/).
 
+## [0.5.1] — 2026-07-25
+
+### 🎨 Бренд-айдентика: логотип Convoic
+
+Добавлен фирменный логотип Convoic во все точки контакта с пользователем.
+
+### ✨ Что нового
+
+- **Логотип в окне «О программе»** (`About.tsx`) — использует transparent-вариант `convoic_icon_128.png` на белом фоне диалога, увеличен до 96px для лучшей читаемости. Прежнее `icon_128x128.png` (upstream) было сломано (файл отсутствовал в `public/`).
+- **Логотип в Sidebar collapsed** (`Logo.tsx`) — вместо несуществующего `/logo-collapsed.png` теперь используется `convoic_icon_128.png` 36×36px с правильным выравниванием по центру.
+- **favicon и apple-touch-icon** — настроены в `metadata.ts`/`metadata.tsx` через Next.js `icons` field. Браузер/Tauri-окно теперь показывает фирменную иконку Convoic вместо дефолтной Next.js.
+- **Bundle-иконки (Windows installer/taskbar/title bar)** — все 26 файлов в `src-tauri/icons/` перегенерированы из master-логотипа `convoic_icon_1024_white.png` (white-background вариант выбран для корректного отображения на тёмной теме Windows taskbar):
+  - 24 PNG (32/128/256, Square30..310, StoreLogo, icon_16..512 серия)
+  - 2 multi-size ICO (`icon.ico`, `app_icon.ico`) — 6 размеров внутри (16/32/48/64/128/256)
+
+### 🛠️ Технически
+
+- Backup старых иконок создан в `src-tauri/icons_backup_pre_convoic/` (для отката при необходимости)
+- Источник лого: `frontend/public/convoic_icon_*.png` (transparent) и `convoic_icon_*_white.png` (white BG) — пользователь генерировал бренд-набор
+- `.icns` (macOS) оставлены старые — требуют macOS tooling для перегенерации (не блокирует Windows release)
+
+---
+
 ## [0.5.0] — 2026-07-25
 
 ### 🎉 Ребрендинг: Ru-Meetily → Convoic
@@ -114,6 +137,7 @@
 - Умный онбординг + настройка GPU-инференса (PR #4)
 - Vulkan GPU-инференс для llama-helper на Windows (PR #3)
 
+[0.5.1]: https://github.com/Godila/convoic/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Godila/convoic/releases/tag/v0.5.0
 [0.4.1]: https://github.com/Godila/convoic/releases/tag/v0.4.1
 [0.4.0]: https://github.com/Godila/convoic/releases/tag/v0.4.0
