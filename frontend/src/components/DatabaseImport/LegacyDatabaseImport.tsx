@@ -42,7 +42,7 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
         setDetectedPath(dbPath);
         setImportState('idle');
       } else {
-        setErrorMessage('No database found at selected location. Please select the Meetily folder, backend folder, or the database file directly.');
+        setErrorMessage('База данных не найдена в выбранном расположении. Выберите папку Ru-Meetily, папку бэкенда или файл базы данных напрямую.');
         setDetectedPath(null);
         setImportState('error');
         setTimeout(() => setImportState('idle'), 3000);

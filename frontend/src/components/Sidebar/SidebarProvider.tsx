@@ -75,8 +75,8 @@ interface SidebarContextType {
   serverAddress: string;
   transcriptServerAddress: string;
   setTranscriptServerAddress: (address: string) => void;
-  // Summary polling management
-  activeSummaryPolls: Map<string, NodeJS.Timeout>;
+  // Summary polling management. The polling map is intentionally NOT exposed:
+  // it is an internal ref only. Consumers use start/stop and summaryStatuses.
   startSummaryPolling: (meetingId: string, processId: string, onUpdate: (result: any) => void) => void;
   stopSummaryPolling: (meetingId: string) => void;
   // Per-meeting summary status — survives navigation, drives the sidebar spinner.
@@ -107,17 +107,14 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isSearching, setIsSearching] = useState(false);
   const [serverAddress, setServerAddress] = useState('');
   const [transcriptServerAddress, setTranscriptServerAddress] = useState('');
-  const [activeSummaryPolls, setActiveSummaryPolls] = useState<Map<string, NodeJS.Timeout>>(new Map());
-  // Ref mirror so polling callbacks (which must be stable) can read the latest map.
-  const activeSummaryPollsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Polling interval handles live in a ref (mutated synchronously inside the
+  // stable polling callbacks). This avoids a state+effect mirror that could
+  // briefly desync on rapid restarts and leak intervals. Nothing renders off
+  // this map, so it does not need to be reactive state.
+  const activeSummaryPollsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
   // Per-meeting summary status, lifted into global state so the Sidebar can show
   // a spinner that survives navigation away from the meeting-details page.
   const [summaryStatuses, setSummaryStatuses] = useState<Record<string, SummaryStatus>>({});
-
-  // Keep the ref mirror in sync whenever the state map changes.
-  useEffect(() => {
-    activeSummaryPollsRef.current = activeSummaryPolls;
-  }, [activeSummaryPolls]);
 
   // Use recording state from RecordingStateContext (single source of truth)
   const { isRecording } = useRecordingState();
@@ -229,23 +226,16 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   // Summary polling management.
   //
-  // IMPORTANT: these callbacks read the polling map via activeSummaryPollsRef
-  // (a ref mirror), NOT the state directly, so they can be stable (empty dep
-  // array). This prevents the meeting-details page's polling effect from being
-  // torn down and re-subscribed on every status change, which previously caused
-  // premature polling cancellation when navigating away.
+  // IMPORTANT: these callbacks mutate activeSummaryPollsRef synchronously (no
+  // state, no effect mirror). This keeps them stable (empty dep array) AND
+  // eliminates the desync window that previously could leak intervals on rapid
+  // restarts of the same meeting's poll. The map is internal and never rendered.
   const stopPollInternal = useCallback((meetingId: string) => {
     const interval = activeSummaryPollsRef.current.get(meetingId);
     if (interval) {
       clearInterval(interval);
     }
-    setActiveSummaryPolls(prev => {
-      if (!prev.has(meetingId)) return prev;
-      const next = new Map(prev);
-      next.delete(meetingId);
-      return next;
-    });
-    // ref mirror is updated by the [activeSummaryPolls] effect above
+    activeSummaryPollsRef.current.delete(meetingId);
   }, []);
 
   const startSummaryPolling = useCallback((
@@ -338,7 +328,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       }
     }, 5000); // Poll every 5 seconds
 
-    setActiveSummaryPolls(prev => new Map(prev).set(meetingId, pollInterval));
+    // Register synchronously so a rapid second startSummaryPolling for the same
+    // meeting sees and clears this interval via stopPollInternal above.
+    activeSummaryPollsRef.current.set(meetingId, pollInterval);
   }, [stopPollInternal]);
 
   const stopSummaryPolling = useCallback((meetingId: string) => {
@@ -390,7 +382,6 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       serverAddress,
       transcriptServerAddress,
       setTranscriptServerAddress,
-      activeSummaryPolls,
       startSummaryPolling,
       stopSummaryPolling,
       summaryStatuses,

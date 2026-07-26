@@ -46,18 +46,34 @@ export function useSummaryGeneration({
     setGlobalSummaryStatus(meeting.id, status as any);
   }, [meeting.id, setGlobalSummaryStatus]);
 
-  // On mount / meeting switch: if the global map already knows this meeting is
-  // generating (e.g. user navigated away and came back), seed the local status
-  // so the page UI shows the spinner instead of idle.
+  // Subscribe to the GLOBAL summary status for this meeting. This is essential
+  // for the auto-resume path: when generation is in progress but this hook did
+  // NOT start it (the user came back to a meeting whose summary was already
+  // generating), the page-level auto-resume poll updates only the global map.
+  // Without this effect, the local `summaryStatus` would be stuck on
+  // 'processing' forever after completion.
+  //
+  // We only adopt the global status when we are NOT driving it ourselves: once
+  // processSummary runs, it calls setSummaryStatus (local + global) directly,
+  // and summaryStatuses[meeting.id] mirrors our local value — so the effect is
+  // a no-op write. For the resumed case, the global value is the source of truth.
+  const globalStatusForMeeting = summaryStatuses[meeting.id] as SummaryStatus | undefined;
   useEffect(() => {
-    const globalStatus = summaryStatuses[meeting.id];
-    if (globalStatus && (globalStatus === 'processing' || globalStatus === 'summarizing' || globalStatus === 'regenerating')) {
-      setSummaryStatusLocal(globalStatus as SummaryStatus);
+    if (globalStatusForMeeting === undefined) {
+      // Global has no record: if we believe we're active but the global cleared
+      // (e.g. completion/error from the resume path), drop out of the active state.
+      if (summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating') {
+        // Only clear if the page genuinely isn't generating any more. The resume
+        // path sets global to 'completed'/'error' before clearing, so by the time
+        // it's undefined we can safely go idle.
+        setSummaryStatusLocal('idle');
+      }
+      return;
     }
-    // Only re-seed when the meeting changes; subsequent updates arrive through
-    // the polling callback which calls setSummaryStatus directly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meeting.id]);
+    if (globalStatusForMeeting !== summaryStatus) {
+      setSummaryStatusLocal(globalStatusForMeeting);
+    }
+  }, [globalStatusForMeeting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper to get status message
   const getSummaryStatusMessage = useCallback((status: SummaryStatus) => {

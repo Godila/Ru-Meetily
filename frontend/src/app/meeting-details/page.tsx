@@ -1,6 +1,6 @@
 "use client"
 import { useSidebar } from "@/components/Sidebar/SidebarProvider";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { Transcript, Summary } from "@/types";
 import PageContent from "./page-content";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,6 +24,13 @@ function MeetingDetailsContent() {
   const meetingId = searchParams.get('id');
   const source = searchParams.get('source'); // Check if navigated from recording
   const { setCurrentMeeting, refetchMeetings, startSummaryPolling, setSummaryStatus } = useSidebar();
+
+  // Track the meeting id this page instance is currently bound to, so long-lived
+  // auto-resume polling callbacks can bail out if the user navigated to another
+  // meeting (same component instance, different searchParams) — prevents writing
+  // meeting A's completed summary onto meeting B's page.
+  const currentMeetingIdRef = useRef<string | null>(meetingId);
+  currentMeetingIdRef.current = meetingId;
   const { isAutoSummary } = useConfig(); // Get auto-summary toggle state
   const router = useRouter();
   const [meetingDetails, setMeetingDetails] = useState<MeetingDetailsResponse | null>(null);
@@ -182,7 +189,7 @@ function MeetingDetailsContent() {
 
     if (!meetingId || meetingId === 'intro-call') {
       console.warn('No valid meeting ID in URL - meetingId:', meetingId);
-      setError("No meeting selected");
+      setError("Встреча не выбрана");
       setIsLoading(false);
       Analytics.trackPageView('meeting_details');
       return;
@@ -217,10 +224,20 @@ function MeetingDetailsContent() {
         if (summary.status === 'pending' || summary.status === 'processing') {
           console.log('🔄 Summary generation in progress, resuming polling for', meetingId);
           setSummaryStatus(meetingId, 'processing');
+          const resumedMeetingId = meetingId;
           startSummaryPolling(meetingId, meetingId, async (pollResult: any) => {
+            // Guard: if the user navigated to a different meeting since this
+            // resume started, do NOT write the result onto the wrong page.
+            // (MeetingDetailsContent is a single instance across meetings, so
+            // setMeetingSummary would otherwise leak meeting A onto meeting B.)
+            if (currentMeetingIdRef.current !== resumedMeetingId) {
+              console.log('Auto-resume: skipping stale callback for', resumedMeetingId);
+              return;
+            }
             // On completion, refresh the displayed summary in-place so the user
             // sees the result without having to re-enter the meeting.
             if (pollResult?.status === 'completed' && pollResult?.data) {
+              setSummaryStatus(resumedMeetingId, 'completed');
               try {
                 const data = pollResult.data;
                 const parsed = typeof data === 'string' ? JSON.parse(data) : data;
@@ -231,6 +248,7 @@ function MeetingDetailsContent() {
                 console.warn('Auto-resume: failed to apply completed summary', e);
               }
             } else if (pollResult?.status === 'error' || pollResult?.status === 'failed') {
+              setSummaryStatus(resumedMeetingId, 'error');
               console.warn('Auto-resumed generation failed:', pollResult?.error);
             }
           });

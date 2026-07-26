@@ -59,7 +59,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       console.log('Fetched audio devices:', result);
     } catch (err) {
       console.error('Failed to fetch audio devices:', err);
-      setError('Failed to load audio devices. Please check your system audio settings.');
+      setError('Не удалось загрузить аудиоустройства. Проверьте настройки звука системы.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -176,7 +176,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       // Only monitor input devices for now (microphones)
       const deviceNames = inputDevices.map(device => device.name);
       if (deviceNames.length === 0) {
-        setError('No microphone devices found to monitor');
+        setError('Не найдено микрофонов для мониторинга');
         return;
       }
 
@@ -186,7 +186,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       console.log('Started audio level monitoring for input devices:', deviceNames);
     } catch (err) {
       console.error('Failed to start audio level monitoring:', err);
-      setError('Failed to start audio level monitoring');
+      setError('Не удалось запустить мониторинг уровня звука');
     }
   };
 

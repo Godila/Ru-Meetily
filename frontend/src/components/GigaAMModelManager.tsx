@@ -330,7 +330,7 @@ export function GigaAMModelManager({
           animate={{ opacity: 1, y: 0 }}
           className="text-xs text-gray-500 text-center pt-2"
         >
-          Используется {getModelDisplayName(selectedModel)} для распознавания
+          Используется {getModelDisplayName(selectedModel)} для транскрипции
         </motion.div>
       )}
     </div>

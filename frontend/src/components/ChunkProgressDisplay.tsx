@@ -46,11 +46,11 @@ export function ChunkProgressDisplay({
     const hours = Math.floor(minutes / 60);
 
     if (hours > 0) {
-      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+      return `${hours}ч ${minutes % 60}мин ${seconds % 60}с`;
     } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`;
+      return `${minutes}мин ${seconds % 60}с`;
     } else {
-      return `${seconds}s`;
+      return `${seconds}с`;
     }
   };
 
@@ -234,7 +234,7 @@ export function ChunkProgressDisplay({
 
                 {chunk.error_message && (
                   <div className="mt-1 text-red-700 text-xs">
-                    Error: {chunk.error_message}
+                    Ошибка: {chunk.error_message}
                   </div>
                 )}
               </div>

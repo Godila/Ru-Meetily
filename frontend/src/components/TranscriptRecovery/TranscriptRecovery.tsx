@@ -86,7 +86,7 @@ export function TranscriptRecovery({
       onClose();
     } catch (error) {
       console.error('Recovery failed:', error);
-      alert('Failed to recover meeting. Please try again.');
+      alert('Не удалось восстановить встречу. Попробуйте снова.');
     } finally {
       setIsRecovering(false);
     }
@@ -95,7 +95,7 @@ export function TranscriptRecovery({
   const handleDelete = async () => {
     if (!selectedMeetingId) return;
 
-    if (!confirm('Are you sure you want to delete this meeting? This cannot be undone.')) {
+    if (!confirm('Удалить эту встречу? Действие нельзя отменить.')) {
       return;
     }
 
@@ -106,7 +106,7 @@ export function TranscriptRecovery({
       setPreviewTranscripts([]);
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Failed to delete meeting. Please try again.');
+      alert('Не удалось удалить встречу. Попробуйте снова.');
     } finally {
       setIsDeleting(false);
     }

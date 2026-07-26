@@ -45,7 +45,7 @@ export function AudioBackendSelector({
         }
       } catch (err) {
         console.error('Failed to load audio backends:', err);
-        setError('Failed to load backend options');
+        setError('Не удалось загрузить способы захвата аудио');
       } finally {
         setLoading(false);
       }
@@ -69,7 +69,7 @@ export function AudioBackendSelector({
       console.log(`Audio backend changed to: ${backendId}`);
     } catch (err) {
       console.error('Failed to set audio backend:', err);
-      setError('Failed to change backend. Please try again.');
+      setError('Не удалось изменить способ захвата. Попробуйте снова.');
     }
   };
 
