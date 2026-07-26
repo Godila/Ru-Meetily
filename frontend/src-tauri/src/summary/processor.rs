@@ -161,6 +161,7 @@ fn build_final_report_system_prompt(
 5. If a section has no relevant info, write "None noted in this section."
 6. Output **only** the completed Markdown report.
 7. If unsure about something, omit it.
+8. Do NOT produce any reasoning, chain-of-thought, or `<think>` blocks. Respond directly with the report.
 
 **SECTION-SPECIFIC INSTRUCTIONS:**
 {section_instructions}
@@ -386,7 +387,7 @@ pub async fn generate_meeting_summary(
             info!("Split transcript into {} chunks", num_chunks);
 
             let mut chunk_summaries = Vec::new();
-            let system_prompt_chunk = "You are an expert meeting summarizer.";
+            let system_prompt_chunk = "You are an expert meeting summarizer. Do NOT use <think> blocks or reasoning; respond directly with the summary.";
 
             for (i, chunk) in chunks.iter().enumerate() {
                 // Check for cancellation before processing each chunk
@@ -452,7 +453,7 @@ pub async fn generate_meeting_summary(
                     chunk_summaries.len()
                 );
                 let combined_text = chunk_summaries.join("\n---\n");
-                let system_prompt_combine = "You are an expert at synthesizing meeting summaries.";
+                let system_prompt_combine = "You are an expert at synthesizing meeting summaries. Do NOT use <think> blocks or reasoning; respond directly with the combined summary.";
                 let user_prompt_combine = build_combine_summary_user_prompt(&combined_text);
                 generate_summary(
                     client,

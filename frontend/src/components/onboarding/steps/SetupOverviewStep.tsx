@@ -80,12 +80,12 @@ export function SetupOverviewStep() {
     {
       number: 1,
       type: 'transcription',
-      title: 'Скачать движок транскрипции',
+      title: 'Скачать модель распознавания речи',
     },
     {
       number: 2,
       type: 'summarization',
-      title: 'Скачать движок суммаризации',
+      title: 'Скачать локальную LLM для саммари',
     },
   ];
 
@@ -103,7 +103,7 @@ export function SetupOverviewStep() {
   return (
     <OnboardingContainer
       title="Обзор настройки"
-      description="Для работы Meetly необходимо загрузить модели транскрипции и суммаризации."
+      description="Для работы Meetly необходимо загрузить модель распознавания речи и локальную LLM для саммари."
       step={2}
       totalSteps={isMac ? 4 : 3}
     >
@@ -145,7 +145,7 @@ export function SetupOverviewStep() {
             {/* Inference mode + recommended model */}
             <div className="mt-3 border-t border-gray-100 pt-3">
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-sm text-gray-600">Инференс резюме</span>
+                <span className="text-sm text-gray-600">Генерация резюме</span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
                 >

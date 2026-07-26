@@ -657,8 +657,49 @@ impl ModelState {
         eprintln!("   • Speed: {:.2} tokens/sec", tokens_per_sec);
 
         self.update_activity();
-        Ok(output)
+        Ok(strip_think_block(&output))
     }
+}
+
+/// Strip Qwen3 thinking-mode artefacts from the model output so the host never
+/// sees reasoning leakage. Three cases:
+/// 1. `<think>...</think>` complete block → remove it, keep the rest.
+/// 2. `<think>` opened but never closed (model hit max_tokens mid-reasoning)
+///    → the entire output is reasoning and there is no answer. We drop it all
+///    and return a short marker so the host can decide (regenerate / show
+///    empty). Returning raw reasoning would surface English chain-of-thought
+///    to the user, which is worse than an empty answer.
+/// 3. No `<think>` tag at all → return unchanged.
+///
+/// This is a defensive layer on top of the `qwen3.5_nonthinking` template
+/// (which seeds an empty `<think>\n\n</think>`), because Qwen3 occasionally
+/// re-opens a thinking block despite the seed.
+fn strip_think_block(output: &str) -> String {
+    // Case 3: no think tag at all.
+    let first_open = match output.find("<think>") {
+        Some(i) => i,
+        None => return output.to_string(),
+    };
+
+    // Case 1: a closed block. Strip everything from the first `<think>` up to
+    // and including the matching `</think>`. Qwen emits at most one block, so
+    // a single pass is enough.
+    if let Some(close_end) = output.find("</think>") {
+        let close_start = close_end;
+        let after = &output[close_start + "</think>".len()..];
+        let before = &output[..first_open];
+        return format!("{}{}", before, after)
+            .trim_start_matches(['\n', ' '])
+            .to_string();
+    }
+
+    // Case 2: `<think>` opened, never closed → the model ran out of tokens
+    // while still reasoning. Drop the reasoning entirely.
+    eprintln!(
+        "⚠️ Output contained unclosed <think> block ({} chars dropped); model likely hit max_tokens during reasoning",
+        output.len()
+    );
+    String::new()
 }
 
 // ============================================================================
@@ -900,5 +941,34 @@ mod tests {
             panic!("expected generate request");
         };
         assert_eq!(force_cpu, Some(true));
+    }
+
+    // ---- strip_think_block (Qwen3 thinking-mode cleanup) ----
+
+    #[test]
+    fn strip_think_block_no_tag_returns_unchanged() {
+        assert_eq!(strip_think_block("plain summary text"), "plain summary text");
+    }
+
+    #[test]
+    fn strip_think_block_closed_block_removes_reasoning() {
+        let input = "<think>reasoning here</think>\n\n# Final summary";
+        assert_eq!(strip_think_block(input), "# Final summary");
+    }
+
+    #[test]
+    fn strip_think_block_unclosed_block_drops_reasoning() {
+        // Model hit max_tokens mid-thinking; the entire output is reasoning
+        // with no answer. Must return empty so the host can react.
+        let input = "<think>\nThinking Process:\n1. Analyze the Request";
+        assert_eq!(strip_think_block(input), "");
+    }
+
+    #[test]
+    fn strip_think_block_empty_closed_block_preserves_rest() {
+        // The qwen3.5_nonthinking template seeds this; if the model respects
+        // it, the answer follows directly.
+        let input = "<think>\n\n</think>\n\nHere is the summary.";
+        assert_eq!(strip_think_block(input), "Here is the summary.");
     }
 }
