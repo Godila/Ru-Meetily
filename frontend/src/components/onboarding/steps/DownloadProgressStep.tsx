@@ -454,9 +454,9 @@ export function DownloadProgressStep() {
         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
           <p className="text-sm text-red-600 font-medium">Ошибка загрузки</p>
           <p className="text-xs text-red-500 mt-1">{state.error}</p>
-          {(title === 'Движок транскрипции' || title === 'Движок суммаризации') && (
+          {(title === 'Модель распознавания речи' || title === 'Локальная LLM для саммари') && (
             <button
-              onClick={title === 'Движок транскрипции' ? handleRetryDownload : handleRetrySummaryDownload}
+              onClick={title === 'Модель распознавания речи' ? handleRetryDownload : handleRetrySummaryDownload}
               className="mt-3 w-full h-9 px-4 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -474,7 +474,7 @@ export function DownloadProgressStep() {
   return (
     <OnboardingContainer
       title="Подготовка к работе"
-      description="После загрузки движка транскрипции можно начать пользоваться Meetly."
+      description="После загрузки модели распознавания речи можно начать пользоваться Meetly."
       step={3}
       totalSteps={isMac ? 4 : 3}
     >
@@ -482,14 +482,14 @@ export function DownloadProgressStep() {
         {/* Download Cards */}
         <div className="w-full max-w-lg space-y-4">
           {renderDownloadCard(
-            'Движок транскрипции',
+            'Модель распознавания речи',
             <Mic className="w-5 h-5 text-gray-600" />,
             parakeetState,
             '~227 MB'
           )}
 
           {renderDownloadCard(
-            'Движок суммаризации',
+            'Локальная LLM для саммари',
             <Sparkles className="w-5 h-5 text-gray-600" />,
             summaryState,
             getSummaryModelSizeLabel(selectedSummaryModel || recommendedSummaryModel),

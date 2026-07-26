@@ -10,19 +10,7 @@ import type { SummaryGeneratorButtonGroupProps } from './SummaryGeneratorButtonG
 import type { TemplateInfo } from '@/hooks/meeting-details/useTemplates';
 import { SummaryUpdaterButtonGroup } from './SummaryUpdaterButtonGroup';
 import Analytics from '@/lib/analytics';
-import { useEffect, useRef, useState, RefObject } from 'react';
-import { toast } from 'sonner';
-import { Languages, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { LanguagePickerPopover } from '@/components/LanguagePickerPopover';
-import { useRecentLanguages } from '@/hooks/useRecentLanguages';
-import { labelForCode } from '@/lib/summary-languages';
-import {
-  readMeetingSummaryLanguage,
-  saveMeetingSummaryLanguage,
-  SummaryLanguageStorage,
-} from '@/lib/summary-language-preferences';
+import { useRef, useState, RefObject } from 'react';
 
 interface SummaryPanelProps {
   meeting: {
@@ -104,160 +92,7 @@ export function SummaryPanel({
   onOpenModelSettings,
   editorState
 }: SummaryPanelProps) {
-  const [summaryLang, setSummaryLang] = useState<string | null>(null);
-  const [summaryLangStorage, setSummaryLangStorage] = useState<SummaryLanguageStorage>('metadata');
-  const [langPickerOpen, setLangPickerOpen] = useState(false);
-  const languageLoadVersionRef = useRef(0);
-  const activeMeetingIdRef = useRef(meeting.id);
-  const languageSaveVersionRef = useRef(0);
-  const languageSaveLoopRunningRef = useRef(false);
-  const latestLanguageSaveRequestRef = useRef<{
-    version: number;
-    meetingId: string;
-    language: string | null;
-    rollback: {
-      language: string | null;
-      storage: SummaryLanguageStorage;
-    };
-  } | null>(null);
-  activeMeetingIdRef.current = meeting.id;
-  const { addRecent } = useRecentLanguages();
-
-  const effectiveLangLabel = summaryLang ? labelForCode(summaryLang) : 'Auto';
-  const isLocalFallbackLanguage = summaryLangStorage === 'local_fallback';
-  const autoSubtitle = isLocalFallbackLanguage
-    ? 'Saved on this device for folderless meetings'
-    : 'Uses dominant transcript language';
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadVersion = languageLoadVersionRef.current + 1;
-    languageLoadVersionRef.current = loadVersion;
-
-    const loadSummaryLanguage = async () => {
-      try {
-        const stored = await readMeetingSummaryLanguage(meeting.id);
-        if (!cancelled && languageLoadVersionRef.current === loadVersion) {
-          setSummaryLang(stored.language);
-          setSummaryLangStorage(stored.storage);
-        }
-      } catch (err) {
-        console.error('Failed to load summary language:', err);
-        toast.warning('Could not load saved summary language', {
-          description: 'Using Auto until meeting metadata can be read.',
-        });
-        if (!cancelled && languageLoadVersionRef.current === loadVersion) setSummaryLang(null);
-      }
-    };
-
-    loadSummaryLanguage();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [meeting.id]);
-
-  const persistLatestLanguageSelection = async () => {
-    if (languageSaveLoopRunningRef.current) return;
-    languageSaveLoopRunningRef.current = true;
-
-    try {
-      while (true) {
-        const request = latestLanguageSaveRequestRef.current;
-        if (!request) return;
-
-        try {
-          const saved = await saveMeetingSummaryLanguage(request.meetingId, request.language);
-          const latest = latestLanguageSaveRequestRef.current;
-          if (
-            latest?.version === request.version &&
-            activeMeetingIdRef.current === request.meetingId
-          ) {
-            setSummaryLang(saved.language);
-            setSummaryLangStorage(saved.storage);
-            if (saved.storage === 'local_fallback') {
-              toast.info('Summary language saved on this device', {
-                description: 'This meeting has no recording folder, so the preference cannot be written to meeting metadata.',
-              });
-            }
-            if (request.language) {
-              addRecent(request.language);
-            }
-            return;
-          }
-
-          if (latest?.version === request.version) return;
-        } catch (err) {
-          const latest = latestLanguageSaveRequestRef.current;
-          if (
-            latest?.version === request.version &&
-            activeMeetingIdRef.current === request.meetingId
-          ) {
-            console.error('Failed to persist summary language:', err);
-            toast.error('Failed to save summary language');
-            setSummaryLang(request.rollback.language);
-            setSummaryLangStorage(request.rollback.storage);
-            return;
-          }
-
-          console.warn('Ignoring failed stale summary language save:', err);
-          if (latest?.version === request.version) return;
-        }
-      }
-    } finally {
-      languageSaveLoopRunningRef.current = false;
-    }
-  };
-
-  const handleLangChange = (code: string | null) => {
-    const previous = summaryLang;
-    const previousStorage = summaryLangStorage;
-    const nextStored = code;
-    languageLoadVersionRef.current += 1;
-    latestLanguageSaveRequestRef.current = {
-      version: languageSaveVersionRef.current + 1,
-      meetingId: meeting.id,
-      language: nextStored,
-      rollback: {
-        language: previous,
-        storage: previousStorage,
-      },
-    };
-    languageSaveVersionRef.current += 1;
-    setSummaryLang(nextStored);
-    setLangPickerOpen(false);
-    void persistLatestLanguageSelection();
-  };
-
   const isSummaryLoading = summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating';
-
-  const languageSlot = (
-    <Popover open={langPickerOpen} onOpenChange={setLangPickerOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          title={`Summary language: ${effectiveLangLabel}${isLocalFallbackLanguage ? ' (saved on this device)' : ''}`}
-          aria-label="Set summary language"
-        >
-          <Languages size={18} />
-          <span className="hidden lg:inline">{effectiveLangLabel}</span>
-          <ChevronDown size={14} className="text-gray-400" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="w-auto p-0 border-0 shadow-none bg-transparent"
-      >
-        <LanguagePickerPopover
-          value={summaryLang}
-          onChange={handleLangChange}
-          onClose={() => setLangPickerOpen(false)}
-          autoSubtitle={autoSubtitle}
-        />
-      </PopoverContent>
-    </Popover>
-  );
 
   return (
     <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden">
@@ -292,7 +127,6 @@ export function SummaryPanel({
                 isModelConfigLoading={isModelConfigLoading}
                 onOpenModelSettings={onOpenModelSettings}
                 editorState={editorState}
-                languageSlot={languageSlot}
               />
             </div>
 
@@ -339,7 +173,7 @@ export function SummaryPanel({
           <div className="flex items-center justify-center flex-1">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-              <p className="text-gray-600">Generating AI Summary...</p>
+              <p className="text-gray-600">Генерация резюме...</p>
             </div>
           </div>
         </div>
@@ -363,7 +197,6 @@ export function SummaryPanel({
               isModelConfigLoading={isModelConfigLoading}
               onOpenModelSettings={onOpenModelSettings}
               editorState={editorState}
-              languageSlot={transcripts.length > 0 ? languageSlot : undefined}
             />
           </div>
           {/* Empty state message */}
@@ -377,10 +210,10 @@ export function SummaryPanel({
         <div className="flex-1 overflow-y-auto min-h-0">
           {summaryResponse && (
             <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4 max-h-1/3 overflow-y-auto">
-              <h3 className="text-lg font-semibold mb-2">Meeting Summary</h3>
+              <h3 className="text-lg font-semibold mb-2">Резюме встречи</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <h4 className="font-medium mb-1">Key Points</h4>
+                  <h4 className="font-medium mb-1">Ключевые моменты</h4>
                   <ul className="list-disc pl-4">
                     {summaryResponse.summary.key_points.blocks.map((block, i) => (
                       <li key={i} className="text-sm">{block.content}</li>
@@ -388,7 +221,7 @@ export function SummaryPanel({
                   </ul>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm mt-4">
-                  <h4 className="font-medium mb-1">Action Items</h4>
+                  <h4 className="font-medium mb-1">Задачи</h4>
                   <ul className="list-disc pl-4">
                     {summaryResponse.summary.action_items.blocks.map((block, i) => (
                       <li key={i} className="text-sm">{block.content}</li>
@@ -396,7 +229,7 @@ export function SummaryPanel({
                   </ul>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm mt-4">
-                  <h4 className="font-medium mb-1">Decisions</h4>
+                  <h4 className="font-medium mb-1">Решения</h4>
                   <ul className="list-disc pl-4">
                     {summaryResponse.summary.decisions.blocks.map((block, i) => (
                       <li key={i} className="text-sm">{block.content}</li>
@@ -404,7 +237,7 @@ export function SummaryPanel({
                   </ul>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm mt-4">
-                  <h4 className="font-medium mb-1">Main Topics</h4>
+                  <h4 className="font-medium mb-1">Основные темы</h4>
                   <ul className="list-disc pl-4">
                     {summaryResponse.summary.main_topics.blocks.map((block, i) => (
                       <li key={i} className="text-sm">{block.content}</li>
@@ -414,7 +247,7 @@ export function SummaryPanel({
               </div>
               {summaryResponse.raw_summary ? (
                 <div className="mt-4">
-                  <h4 className="font-medium mb-1">Full Summary</h4>
+                  <h4 className="font-medium mb-1">Полное резюме</h4>
                   <p className="text-sm whitespace-pre-wrap">{summaryResponse.raw_summary}</p>
                 </div>
               ) : null}

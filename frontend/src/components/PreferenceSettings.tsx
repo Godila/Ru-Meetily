@@ -134,12 +134,12 @@ export function PreferenceSettings() {
 
   // Show loading only if we're actually loading and don't have cached data
   if (isLoadingPreferences && !notificationSettings && !storageLocations) {
-    return <div className="max-w-2xl mx-auto p-6">Loading Preferences...</div>
+    return <div className="max-w-2xl mx-auto p-6">Загрузка настроек...</div>
   }
 
   // Show loading if notificationsEnabled hasn't been determined yet
   if (notificationsEnabled === null && !isLoadingPreferences) {
-    return <div className="max-w-2xl mx-auto p-6">Loading Preferences...</div>
+    return <div className="max-w-2xl mx-auto p-6">Загрузка настроек...</div>
   }
 
   // Ensure we have a boolean value for the Switch component

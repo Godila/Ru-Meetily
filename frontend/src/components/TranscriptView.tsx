@@ -343,7 +343,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
           className="flex items-center gap-2 mt-4 text-gray-500"
         >
           <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-sm">Listening...</span>
+          <span className="text-sm">Слушаю...</span>
         </motion.div>
       )}
 
@@ -360,12 +360,12 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
                 <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-blue-500 animate-pulse'}`}></div>
               </div>
               <p className="text-sm text-gray-600">
-                {isPaused ? 'Recording paused' : 'Listening for speech...'}
+                {isPaused ? 'Запись на паузе' : 'Идёт распознавание...'}
               </p>
               <p className="text-xs mt-1 text-gray-400">
                 {isPaused
-                  ? 'Click resume to continue recording'
-                  : 'Speak to see live transcription'}
+                  ? 'Нажмите «Продолжить» для возобновления записи'
+                  : 'Начните говорить — текст появится здесь'}
               </p>
             </>
           ) : (

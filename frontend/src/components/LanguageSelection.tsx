@@ -172,14 +172,14 @@ export function LanguageSelection({
   // Find the selected language name for display
   const selectedLanguageName = LANGUAGES.find(
     lang => lang.code === selectedLanguage
-  )?.name || 'Auto Detect (Original Language)';
+  )?.name || 'Автоопределение (язык оригинала)';
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-gray-600" />
-          <h4 className="text-sm font-medium text-gray-900">Transcription Language</h4>
+          <h4 className="text-sm font-medium text-gray-900">Язык транскрипции</h4>
         </div>
       </div>
 
@@ -201,11 +201,11 @@ export function LanguageSelection({
         {/* Language-fixed provider warning (Parakeet = English, GigaAM = Russian) */}
         {isLanguageFixed && (
           <div className="p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
-            <p className="font-medium">ℹ️ {provider === 'gigaam' ? 'GigaAM' : 'Parakeet'} Language Support</p>
+            <p className="font-medium">ℹ️ Поддержка языка: {provider === 'gigaam' ? 'GigaAM' : 'Parakeet'}</p>
             <p className="mt-1 text-xs">
               {provider === 'gigaam'
                 ? 'GigaAM оптимизирован для русского языка и поддерживает только автоматическое определение. Для выбора конкретного языка используйте Whisper.'
-                : 'Parakeet currently only supports automatic language detection. Manual language selection is not available. Use Whisper if you need to specify a particular language.'}
+                : 'Parakeet поддерживает только автоматическое определение языка. Ручной выбор недоступен. Используйте Whisper, если нужно указать конкретный язык.'}
             </p>
           </div>
         )}
@@ -213,23 +213,23 @@ export function LanguageSelection({
         {/* Info text */}
         <div className="text-xs space-y-2 pt-2">
           <p className="text-gray-600">
-            <strong>Current:</strong> {selectedLanguageName}
+            <strong>Текущий:</strong> {selectedLanguageName}
           </p>
           {selectedLanguage === 'auto' && (
             <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
-              <p className="font-medium">⚠️ Auto Detect may produce incorrect results</p>
-              <p className="mt-1">For best accuracy, select your specific language (e.g., English, Spanish, etc.)</p>
+              <p className="font-medium">⚠️ Автоопределение может давать неточные результаты</p>
+              <p className="mt-1">Для лучшей точности выберите конкретный язык (например, русский, английский и т.д.)</p>
             </div>
           )}
           {selectedLanguage === 'auto-translate' && (
             <div className="p-2 bg-blue-50 border border-blue-200 rounded text-blue-800">
-              <p className="font-medium">🌐 Translation Mode Active</p>
-              <p className="mt-1">All audio will be automatically translated to English. Best for multilingual meetings where you need English output.</p>
+              <p className="font-medium">🌐 Активен режим перевода</p>
+              <p className="mt-1">Всё аудио будет автоматически переведено на английский. Подходит для многоязычных встреч, где нужен вывод на английском.</p>
             </div>
           )}
           {selectedLanguage !== 'auto' && selectedLanguage !== 'auto-translate' && (
             <p className="text-gray-600">
-              Transcription will be optimized for <strong>{selectedLanguageName}</strong>
+              Транскрипция будет оптимизирована для <strong>{selectedLanguageName}</strong>
             </p>
           )}
         </div>

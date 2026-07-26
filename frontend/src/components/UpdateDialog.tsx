@@ -190,26 +190,26 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
             {isDownloading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                Downloading Update
+                Загрузка обновления
               </>
             ) : error ? (
               <>
                 <AlertCircle className="h-5 w-5 text-red-600" />
-                Update Error
+                Ошибка обновления
               </>
             ) : (
               <>
                 <Download className="h-5 w-5 text-blue-600" />
-                Update Available
+                Доступно обновление
               </>
             )}
           </DialogTitle>
           <DialogDescription>
             {isDownloading
-              ? 'Downloading the latest version...'
+              ? 'Загрузка последней версии...'
               : error
-              ? 'An error occurred while updating'
-              : `A new version (${updateInfo.version}) is available`}
+              ? 'При обновлении произошла ошибка'
+              : `Доступна новая версия (${updateInfo.version})`}
           </DialogDescription>
         </DialogHeader>
 
@@ -218,16 +218,16 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
             <>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Current Version:</span>
+                  <span className="text-muted-foreground">Текущая версия:</span>
                   <span className="font-medium">{updateInfo.currentVersion}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">New Version:</span>
+                  <span className="text-muted-foreground">Новая версия:</span>
                   <span className="font-medium text-blue-600">{updateInfo.version}</span>
                 </div>
                 {updateInfo.date && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Release Date:</span>
+                    <span className="text-muted-foreground">Дата выпуска:</span>
                     <span className="font-medium">{formatDate(updateInfo.date)}</span>
                   </div>
                 )}
@@ -253,7 +253,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
                   />
                 </div>
                 <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>{Math.round(progress.percentage)}% complete</span>
+                  <span>{Math.round(progress.percentage)}% завершено</span>
                   {progress.total > 0 && (
                     <span>
                       {formatBytes(progress.downloaded)} / {formatBytes(progress.total)}
@@ -262,7 +262,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
                 </div>
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                The app will restart automatically after installation
+                Приложение перезапустится автоматически после установки
               </p>
             </div>
           )}
@@ -278,17 +278,17 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           {!isDownloading && !error && (
             <>
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Later
+                Позже
               </Button>
               <Button onClick={handleDownloadAndInstall} className="bg-blue-600 hover:bg-blue-700">
                 <Download className="h-4 w-4 mr-2" />
-                Download & Install
+                Скачать и установить
               </Button>
             </>
           )}
           {error && (
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              Close
+              Закрыть
             </Button>
           )}
         </DialogFooter>

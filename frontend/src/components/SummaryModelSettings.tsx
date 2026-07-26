@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { ModelConfig, ModelSettingsModal } from '@/components/ModelSettingsModal';
-import { SummaryLanguageSettings } from '@/components/SummaryLanguageSettings';
 import { Switch } from './ui/switch';
 import { useConfig } from '@/contexts/ConfigContext';
 import type { HardwareProfileInfo } from '@/types/hardware';
@@ -24,7 +23,6 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
 
   const [useGpu, setUseGpu] = useState<boolean>(true);
   const [hasGpu, setHasGpu] = useState<boolean>(false);
-  const [gpuName, setGpuName] = useState<string | null>(null);
 
   const { isAutoSummary, toggleIsAutoSummary } = useConfig();
 
@@ -78,10 +76,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
   // Detect hardware once on mount to drive the GPU-toggle availability.
   useEffect(() => {
     invoke<HardwareProfileInfo>('api_get_hardware_profile')
-      .then((info) => {
-        setHasGpu(info.hasGpu);
-        setGpuName(info.gpuName);
-      })
+      .then((info) => setHasGpu(info.hasGpu))
       .catch((e) => console.warn('Hardware detection failed:', e));
   }, []);
 
@@ -170,14 +165,12 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
         <div className="flex items-center justify-between">
           <div className="pr-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              GPU-ускорение локальных моделей
+              Быстрая генерация на видеокарте
             </h3>
             <p className="text-sm text-gray-600">
               {hasGpu
-                ? gpuName
-                  ? `Использовать видеокарту «${gpuName}» для генерации резюме. Выключите, чтобы принудительно задействовать CPU (n_gpu_layers=0).`
-                  : 'Использовать GPU для генерации резюме. Выключите, чтобы принудительно задействовать CPU (n_gpu_layers=0).'
-                : 'GPU не обнаружен — локальные модели работают на CPU. Переключатель недоступен.'}
+                ? 'Резюме генерируется быстрее за счёт видеокарты. Величина ускорения зависит от вашей видеокарты. Отключайте, если резюме перестало генерироваться или появились ошибки.'
+                : 'Видеокарта не обнаружена — резюме генерируется на процессоре. Это медленнее, но работает на любом компьютере.'}
             </p>
           </div>
           <Switch
@@ -187,8 +180,6 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
           />
         </div>
       </div>
-
-      <SummaryLanguageSettings />
 
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-4">Настройка модели резюме</h3>

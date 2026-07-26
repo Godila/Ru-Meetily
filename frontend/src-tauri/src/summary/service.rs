@@ -2,8 +2,6 @@ use crate::database::repositories::{
     meeting::MeetingsRepository, setting::SettingsRepository, summary::SummaryProcessesRepository,
 };
 use crate::summary::llm_client::LLMProvider;
-use crate::summary::language_detection::detect_summary_language;
-use crate::summary::metadata::read_detected_summary_language_from_metadata;
 use crate::summary::processor::{
     extract_meeting_name_from_markdown, generate_meeting_summary, language_name_from_code,
 };
@@ -153,6 +151,11 @@ fn build_summary_result_json(
 /// Parses a `summary_processes.result` JSON blob and extracts a cached English
 /// summary only when it was produced from exactly the same source inputs and
 /// the user is switching to a different non-English target language.
+///
+/// Kept as a no-op fallback for back-compat with DB rows written before the
+/// en→ru removal (single-pass Russian generation now). New summaries are not
+/// cached here, so this function is dead code unless re-introduced.
+#[allow(dead_code)]
 fn extract_cached_english_markdown(
     raw: &str,
     expected_source: &SummaryCacheSource,
@@ -225,58 +228,6 @@ impl SummaryService {
         }
     }
 
-    async fn read_detected_summary_language(
-        pool: &SqlitePool,
-        meeting_id: &str,
-    ) -> Option<String> {
-        let meeting = match MeetingsRepository::get_meeting_metadata(pool, meeting_id).await {
-            Ok(Some(meeting)) => meeting,
-            Ok(None) => {
-                warn!("Meeting not found while reading detected summary language: {}", meeting_id);
-                return None;
-            }
-            Err(e) => {
-                warn!(
-                    "Failed to read meeting metadata for detected summary language (meeting_id={}): {}",
-                    meeting_id, e
-                );
-                return None;
-            }
-        };
-
-        let Some(folder_path) = meeting.folder_path.filter(|p| !p.trim().is_empty()) else {
-            return None;
-        };
-
-        match read_detected_summary_language_from_metadata(Path::new(&folder_path)) {
-            Ok(language) => language,
-            Err(e) => {
-                warn!(
-                    "Failed to read detected summary language metadata for meeting_id={}: {}",
-                    meeting_id, e
-                );
-                None
-            }
-        }
-    }
-
-    fn detect_summary_language_from_text(text: &str) -> Option<String> {
-        let transcript_texts = [text.to_string()];
-        let detection = detect_summary_language(&transcript_texts);
-        match &detection.language {
-            Some(language) => {
-                info!("Detected transcript summary language for normalization: {}", language);
-            }
-            None => {
-                info!(
-                    "Transcript summary language unknown for normalization: {:?}",
-                    detection.reason
-                );
-            }
-        }
-        detection.language
-    }
-
     /// Processes transcript in the background and generates summary
     ///
     /// This function is designed to be spawned as an async task and does not block
@@ -300,7 +251,6 @@ impl SummaryService {
         model_name: String,
         custom_prompt: String,
         template_id: String,
-        summary_language: Option<String>,
     ) {
         let start_time = Instant::now();
         info!(
@@ -439,19 +389,6 @@ impl SummaryService {
         // Get app data directory for BuiltInAI provider
         let app_data_dir = _app.path().app_data_dir().ok();
 
-        if let Some(code) = &summary_language {
-            info!("📝 Summary language preference: {}", code);
-        }
-
-        let detected_summary_language =
-            Self::read_detected_summary_language(&pool, &meeting_id)
-                .await
-                .or_else(|| Self::detect_summary_language_from_text(&text));
-
-        if let Some(code) = &detected_summary_language {
-            info!("📝 Detected transcript summary language: {}", code);
-        }
-
         let template = match templates::get_template(&template_id) {
             Ok(template) => template,
             Err(e) => {
@@ -476,33 +413,6 @@ impl SummaryService {
             custom_openai_temperature,
             custom_openai_top_p,
         );
-
-        let cached_english = match SummaryProcessesRepository::get_summary_data(&pool, &meeting_id).await {
-            Err(e) => {
-                warn!(
-                    "Failed to load prior summary row for cache lookup (meeting_id={}): {}. Falling back to full pass-1 generation.",
-                    meeting_id, e
-                );
-                None
-            }
-            Ok(None) => None,
-            Ok(Some(process)) => process.result.and_then(|raw| {
-                match extract_cached_english_markdown(
-                    &raw,
-                    &cache_source,
-                    summary_language.as_deref(),
-                ) {
-                    Ok(opt) => opt,
-                    Err(e) => {
-                        warn!(
-                            "Cached summary result for meeting_id={} is not valid JSON ({}); ignoring cache.",
-                            meeting_id, e
-                        );
-                        None
-                    }
-                }
-            }),
-        };
 
         let client = reqwest::Client::new();
         // Read the GPU-toggle preference once for the whole summary. Fail-open
@@ -531,9 +441,6 @@ impl SummaryService {
             custom_openai_top_p,
             app_data_dir.as_ref(),
             Some(&cancellation_token),
-            summary_language.as_deref(),
-            detected_summary_language.as_deref(),
-            cached_english.as_deref(),
             force_cpu,
         )
         .await;
@@ -544,7 +451,7 @@ impl SummaryService {
         Self::cleanup_cancellation_token(&meeting_id);
 
         match result {
-            Ok((final_markdown, english_markdown, num_chunks)) => {
+            Ok((final_markdown, num_chunks)) => {
                 info!(
                     "✓ Successfully processed {} chunks for meeting_id: {}. Duration: {:.2}s",
                     num_chunks, meeting_id, duration
@@ -564,11 +471,14 @@ impl SummaryService {
                     }
                 }
 
+                // Single-pass generation now produces the Russian summary directly;
+                // pass the same markdown as the english_cache field for back-compat
+                // with older clients that may still read it.
                 let result_json = build_summary_result_json(
                     &final_markdown,
-                    &english_markdown,
+                    &final_markdown,
                     cache_source,
-                    summary_language.as_deref(),
+                    None,
                 );
 
                 // Update database with completed status

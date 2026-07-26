@@ -21,14 +21,13 @@ import { Sparkles, Settings, Loader2, FileText, Check, Square, Pencil, Plus } fr
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
-import { useState, useEffect, useRef, ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { isOllamaNotInstalledError } from '@/lib/utils';
 import { BuiltInModelInfo } from '@/lib/builtin-ai';
 import { TemplateEditorDialog } from './TemplateEditorDialog';
 import type { EditorTarget, TemplateDraft, TemplateInfo } from '@/hooks/meeting-details/useTemplates';
 
 export interface SummaryGeneratorButtonGroupProps {
-  languageSlot?: ReactNode;
   modelConfig: ModelConfig;
   setModelConfig: (config: ModelConfig | ((prev: ModelConfig) => ModelConfig)) => void;
   onSaveModelConfig: (config?: ModelConfig) => Promise<void>;
@@ -73,7 +72,6 @@ export function SummaryGeneratorButtonGroup({
   hasSummary = false,
   isModelConfigLoading = false,
   onOpenModelSettings,
-  languageSlot,
   editorState
 }: SummaryGeneratorButtonGroupProps) {
   const [isCheckingModels, setIsCheckingModels] = useState(false);
@@ -288,27 +286,25 @@ export function SummaryGeneratorButtonGroup({
           disabled={isCheckingModels || isModelConfigLoading}
           title={
             isModelConfigLoading
-              ? 'Loading model configuration...'
+              ? 'Загрузка конфигурации модели...'
               : isCheckingModels
-                ? 'Checking models...'
-                : hasSummary ? 'Regenerate AI Summary' : 'Generate AI Summary'
+                ? 'Проверка моделей...'
+                : hasSummary ? 'Обновить резюме' : 'Сгенерировать резюме'
           }
         >
           {isCheckingModels || isModelConfigLoading ? (
             <>
               <Loader2 className="animate-spin xl:mr-2" size={18} />
-              <span className="hidden xl:inline">Processing...</span>
+              <span className="hidden xl:inline">Обработка...</span>
             </>
           ) : (
             <>
               <Sparkles className="xl:mr-2" size={18} />
-              <span className="hidden lg:inline xl:inline">{hasSummary ? 'Regenerate Summary' : 'Generate Summary'}</span>
+              <span className="hidden lg:inline xl:inline">{hasSummary ? 'Обновить резюме' : 'Сгенерировать резюме'}</span>
             </>
           )}
         </Button>
       )}
-
-      {languageSlot}
 
       {/* Settings button */}
       <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
@@ -316,17 +312,17 @@ export function SummaryGeneratorButtonGroup({
           <Button
             variant="outline"
             size="sm"
-            title="Summary Settings"
+            title="Настройки резюме"
           >
             <Settings />
-            <span className="hidden lg:inline">AI Model</span>
+            <span className="hidden lg:inline">ИИ-модель</span>
           </Button>
         </DialogTrigger>
         <DialogContent
           aria-describedby={undefined}
         >
           <VisuallyHidden>
-            <DialogTitle>Model Settings</DialogTitle>
+            <DialogTitle>Настройки модели</DialogTitle>
           </VisuallyHidden>
           <ModelSettingsModal
             onSave={async (config) => {

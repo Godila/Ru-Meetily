@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Transcript, Summary } from '@/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 import { CurrentMeeting, useSidebar } from '@/components/Sidebar/SidebarProvider';
@@ -7,46 +7,6 @@ import { toast } from 'sonner';
 import Analytics from '@/lib/analytics';
 import { isOllamaNotInstalledError } from '@/lib/utils';
 import { BuiltInModelInfo } from '@/lib/builtin-ai';
-import {
-  detectAndCacheSummaryLanguage,
-  readMeetingSummaryLanguage,
-  readCachedDetectedSummaryLanguage,
-} from '@/lib/summary-language-preferences';
-
-async function resolveSummaryLanguage(
-  meetingId: string,
-  transcriptTexts: string[]
-): Promise<string | null> {
-  try {
-    const perMeeting = await readMeetingSummaryLanguage(meetingId);
-    if (perMeeting.language) return perMeeting.language;
-  } catch (err) {
-    console.warn('Failed to load meeting summary language:', err);
-    toast.warning('Could not load saved summary language', {
-      description: 'Using Auto for this generation.',
-    });
-  }
-
-  try {
-    const cachedDetected = await readCachedDetectedSummaryLanguage(meetingId);
-    if (cachedDetected) return cachedDetected;
-  } catch (err) {
-    console.warn('Failed to load cached detected summary language:', err);
-  }
-
-  try {
-    const detection = await detectAndCacheSummaryLanguage(meetingId, transcriptTexts);
-    if (detection.reason === 'tie') {
-      toast.warning('Bilingual transcript detected', {
-        description: 'Pick a summary language manually if Auto chooses the wrong fallback.',
-      });
-    }
-    return detection.language;
-  } catch (err) {
-    console.warn('Failed to detect transcript summary language:', err);
-    return null;
-  }
-}
 
 type SummaryStatus = 'idle' | 'processing' | 'summarizing' | 'regenerating' | 'completed' | 'error';
 
@@ -73,10 +33,47 @@ export function useSummaryGeneration({
   setAiSummary,
   onOpenModelSettings,
 }: UseSummaryGenerationProps) {
-  const [summaryStatus, setSummaryStatus] = useState<SummaryStatus>('idle');
+  const [summaryStatus, setSummaryStatusLocal] = useState<SummaryStatus>('idle');
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  const { startSummaryPolling, stopSummaryPolling } = useSidebar();
+  const { startSummaryPolling, stopSummaryPolling, setSummaryStatus: setGlobalSummaryStatus, summaryStatuses } = useSidebar();
+
+  // Keep both local (page UI) and global (sidebar spinner) status in sync.
+  // Active statuses propagate to the global map so the sidebar shows a spinner;
+  // terminal/idle statuses clear the global entry.
+  const setSummaryStatus = useCallback((status: SummaryStatus) => {
+    setSummaryStatusLocal(status);
+    setGlobalSummaryStatus(meeting.id, status as any);
+  }, [meeting.id, setGlobalSummaryStatus]);
+
+  // Subscribe to the GLOBAL summary status for this meeting. This is essential
+  // for the auto-resume path: when generation is in progress but this hook did
+  // NOT start it (the user came back to a meeting whose summary was already
+  // generating), the page-level auto-resume poll updates only the global map.
+  // Without this effect, the local `summaryStatus` would be stuck on
+  // 'processing' forever after completion.
+  //
+  // We only adopt the global status when we are NOT driving it ourselves: once
+  // processSummary runs, it calls setSummaryStatus (local + global) directly,
+  // and summaryStatuses[meeting.id] mirrors our local value — so the effect is
+  // a no-op write. For the resumed case, the global value is the source of truth.
+  const globalStatusForMeeting = summaryStatuses[meeting.id] as SummaryStatus | undefined;
+  useEffect(() => {
+    if (globalStatusForMeeting === undefined) {
+      // Global has no record: if we believe we're active but the global cleared
+      // (e.g. completion/error from the resume path), drop out of the active state.
+      if (summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating') {
+        // Only clear if the page genuinely isn't generating any more. The resume
+        // path sets global to 'completed'/'error' before clearing, so by the time
+        // it's undefined we can safely go idle.
+        setSummaryStatusLocal('idle');
+      }
+      return;
+    }
+    if (globalStatusForMeeting !== summaryStatus) {
+      setSummaryStatusLocal(globalStatusForMeeting);
+    }
+  }, [globalStatusForMeeting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper to get status message
   const getSummaryStatusMessage = useCallback((status: SummaryStatus) => {
@@ -140,12 +137,6 @@ export function useSummaryGeneration({
         duration: 3000,
       });
 
-      // Resolve explicit metadata override first; Auto detects the transcript language.
-      const summaryLanguage = await resolveSummaryLanguage(
-        meeting.id,
-        transcriptTexts?.length ? transcriptTexts : [transcriptText]
-      );
-
       // Process transcript and get process_id
       const result = await invokeTauri('api_process_transcript', {
         text: transcriptText,
@@ -156,7 +147,6 @@ export function useSummaryGeneration({
         overlap: 1000,
         customPrompt: customPrompt,
         templateId: selectedTemplate,
-        summaryLanguage,
       }) as any;
 
       const process_id = result.process_id;

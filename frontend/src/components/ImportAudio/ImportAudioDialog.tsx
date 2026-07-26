@@ -328,7 +328,7 @@ export function ImportAudioDialog({
 
                   {/* Editable title */}
                   <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Meeting Title</label>
+                    <label className="text-sm font-medium text-gray-700">Название встречи</label>
                     <Input
                       value={title}
                       onChange={(e) => {
@@ -340,7 +340,7 @@ export function ImportAudioDialog({
                   </div>
 
                   <Button variant="outline" size="sm" onClick={handleSelectFile} className="w-full">
-                    Choose Different File
+                    Выбрать другой файл
                   </Button>
                 </div>
               ) : (
@@ -350,12 +350,12 @@ export function ImportAudioDialog({
                     {status === 'validating' ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Validating...
+                        Проверка...
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Select Audio File
+                        Выбрать аудиофайл
                       </>
                     )}
                   </Button>
@@ -370,7 +370,7 @@ export function ImportAudioDialog({
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    <span>Advanced Options</span>
+                    <span>Дополнительные параметры</span>
                     {showAdvanced ? (
                       <ChevronUp className="h-4 w-4" />
                     ) : (
@@ -407,7 +407,7 @@ export function ImportAudioDialog({
                             <span className="text-sm font-medium">Язык</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Language selection isn't supported for this model. It always uses its built-in language (Parakeet = English, GigaAM = Russian).
+                            Выбор языка не поддерживается для этой модели. Она всегда использует встроенный язык (Parakeet = английский, GigaAM = русский).
                           </p>
                         </div>
                       )}
@@ -417,7 +417,7 @@ export function ImportAudioDialog({
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Cpu className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Model</span>
+                            <span className="text-sm font-medium">Модель</span>
                           </div>
                           <Select
                             value={selectedModelKey}

@@ -19,7 +19,7 @@ export default function AnalyticsDataModal({ isOpen, onClose, onConfirmDisable }
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <Shield className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">What Analytics Collects</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Что собирает аналитика</h2>
           </div>
           <button
             onClick={onClose}
@@ -36,90 +36,90 @@ export default function AnalyticsDataModal({ isOpen, onClose, onConfirmDisable }
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-green-800">
-                <p className="font-semibold mb-1">Your Privacy is Protected</p>
-                <p>Analytics is off by default. If you enable it, we collect <strong>anonymous usage data only</strong>. No meeting content, names, file paths, or personal information is ever collected.</p>
+                <p className="font-semibold mb-1">Ваша приватность защищена</p>
+                <p>Аналитика выключена по умолчанию. Если включить её, мы собираем <strong>только анонимные данные об использовании</strong>. Никакого содержимого встреч, имён, путей к файлам или личной информации.</p>
               </div>
             </div>
           </div>
 
           {/* Data Categories */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Data We Collect When Enabled:</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Данные, которые мы собираем при включении:</h3>
 
             {/* Model Preferences */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">1. Model Preferences</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">1. Предпочтения по моделям</h4>
               <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                <li>• Transcription model (e.g., "Whisper large-v3", "Parakeet")</li>
-                <li>• Summary model (e.g., "Llama 3.2", "Claude Sonnet")</li>
-                <li>• Model provider (e.g., "Local", "Ollama", "OpenRouter")</li>
+                <li>• Модель транскрипции (напр., «Whisper large-v3», «Parakeet»)</li>
+                <li>• Модель саммари (напр., «Llama 3.2», «Claude Sonnet»)</li>
+                <li>• Провайдер модели (напр., «Локально», «Ollama», «OpenRouter»)</li>
               </ul>
-              <p className="text-xs text-gray-500 mt-2 italic">Helps us understand which models users prefer</p>
+              <p className="text-xs text-gray-500 mt-2 italic">Помогает понять, какие модели предпочитают пользователи</p>
             </div>
 
             {/* Meeting Metrics */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">2. Anonymous Meeting Metrics</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">2. Анонимная статистика встреч</h4>
               <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                <li>• Recording duration (e.g., "125 seconds")</li>
-                <li>• Pause duration (e.g., "5 seconds")</li>
-                <li>• Number of transcript segments</li>
-                <li>• Number of audio chunks processed</li>
+                <li>• Длительность записи (напр., «125 секунд»)</li>
+                <li>• Длительность паузы (напр., «5 секунд»)</li>
+                <li>• Количество фрагментов транскрипции</li>
+                <li>• Количество обработанных аудиофрагментов</li>
               </ul>
-              <p className="text-xs text-gray-500 mt-2 italic">Helps us optimize performance and understand usage patterns</p>
+              <p className="text-xs text-gray-500 mt-2 italic">Помогает оптимизировать производительность и понимать паттерны использования</p>
             </div>
 
             {/* Device Types */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">3. Device Types (Not Names)</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">3. Типы устройств (не названия)</h4>
               <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                <li>• Microphone type: "Bluetooth" or "Wired" or "Unknown"</li>
-                <li>• System audio type: "Bluetooth" or "Wired" or "Unknown"</li>
+                <li>• Тип микрофона: «Bluetooth», «Проводное» или «Неизвестно»</li>
+                <li>• Тип системного аудио: «Bluetooth», «Проводное» или «Неизвестно»</li>
               </ul>
-              <p className="text-xs text-gray-500 mt-2 italic">Helps us improve compatibility, NOT the actual device names</p>
+              <p className="text-xs text-gray-500 mt-2 italic">Помогает улучшить совместимость, а НЕ названия реальных устройств</p>
             </div>
 
             {/* Usage Patterns */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">4. App Usage Patterns</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">4. Паттерны использования</h4>
               <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                <li>• App started/stopped events</li>
-                <li>• Session duration</li>
-                <li>• Feature usage (e.g., "settings changed")</li>
-                <li>• Error occurrences (helps us fix bugs)</li>
+                <li>• События запуска/остановки приложения</li>
+                <li>• Длительность сессии</li>
+                <li>• Использование функций (напр., «настройки изменены»)</li>
+                <li>• Возникновение ошибок (помогает исправлять баги)</li>
               </ul>
-              <p className="text-xs text-gray-500 mt-2 italic">Helps us improve user experience</p>
+              <p className="text-xs text-gray-500 mt-2 italic">Помогает улучшить пользовательский опыт</p>
             </div>
 
             {/* Platform Info */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">5. Platform Information</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">5. Информация о платформе</h4>
               <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                <li>• Operating system (e.g., "macOS", "Windows")</li>
-                <li>• App version (automatically included in all events)</li>
-                <li>• Architecture (e.g., "x86_64", "aarch64")</li>
+                <li>• Операционная система (напр., «macOS», «Windows»)</li>
+                <li>• Версия приложения (автоматически включается во все события)</li>
+                <li>• Архитектура (напр., «x86_64», «aarch64»)</li>
               </ul>
-              <p className="text-xs text-gray-500 mt-2 italic">Helps us prioritize platform support</p>
+              <p className="text-xs text-gray-500 mt-2 italic">Помогает приоритизировать поддержку платформ</p>
             </div>
           </div>
 
           {/* What We DON'T Collect */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h4 className="font-semibold text-red-900 mb-2">What We DON'T Collect:</h4>
+            <h4 className="font-semibold text-red-900 mb-2">Что мы НЕ собираем:</h4>
             <ul className="text-sm text-red-800 space-y-1 ml-4">
-              <li>• ❌ Meeting names or titles</li>
-              <li>• ❌ File names, file paths, or meeting folders</li>
-              <li>• ❌ Meeting transcripts or content</li>
-              <li>• ❌ Audio recordings</li>
-              <li>• ❌ Device names (only types: Bluetooth/Wired)</li>
-              <li>• ❌ Personal information</li>
-              <li>• ❌ Any identifiable data</li>
+              <li>• ❌ Названия встреч</li>
+              <li>• ❌ Имена файлов, пути к файлам или папки встреч</li>
+              <li>• ❌ Транскрипции встреч или их содержимое</li>
+              <li>• ❌ Аудиозаписи</li>
+              <li>• ❌ Названия устройств (только типы: Bluetooth/Проводное)</li>
+              <li>• ❌ Личную информацию</li>
+              <li>• ❌ Любые идентифицирующие данные</li>
             </ul>
           </div>
 
           {/* Example Event */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-2">Example Event:</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Пример события:</h4>
             <pre className="text-xs text-gray-700 overflow-x-auto">
               {`{
   "event": "meeting_ended",
@@ -144,13 +144,13 @@ export default function AnalyticsDataModal({ isOpen, onClose, onConfirmDisable }
             onClick={onClose}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           >
-            Keep Analytics Enabled
+            Оставить включённой
           </button>
           <button
             onClick={onConfirmDisable}
             className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
           >
-            Confirm: Disable Analytics
+            Отключить аналитику
           </button>
         </div>
       </div>

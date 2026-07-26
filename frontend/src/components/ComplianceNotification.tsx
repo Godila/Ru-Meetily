@@ -77,7 +77,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
           <div className="flex items-center gap-1">
             <AlertTriangle className="h-3 w-3 text-amber-500 flex-shrink-0" />
             <h3 className="text-xs font-semibold text-gray-900">
-              Recording Notice
+              Уведомление о записи
             </h3>
           </div>
           <button
@@ -91,11 +91,11 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
         {/* Content */}
         <div className="mb-2">
           <p className="text-xs text-gray-600 mb-1">
-            Inform participants about recording.
+            Предупредите участников о записи.
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded p-1">
             <p className="text-xs text-amber-800 font-medium">
-              US compliance required
+              Нужно согласие участников на запись
             </p>
           </div>
         </div>
@@ -108,7 +108,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
             onClick={handleClose}
             className="text-xs px-2 py-0.5 h-6 flex-1"
           >
-            Later
+            Позже
           </Button>
           <Button
             size="sm"
@@ -116,7 +116,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
             className="text-xs px-2 py-0.5 h-6 bg-green-600 hover:bg-green-700 flex-1"
           >
             <CheckCircle className="h-2 w-2 mr-1" />
-            Done
+            Понятно
           </Button>
         </div>
       </div>

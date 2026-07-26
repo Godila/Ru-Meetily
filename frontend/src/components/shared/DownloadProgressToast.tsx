@@ -26,21 +26,21 @@ function categorizeError(error: string): string {
     lowerError.includes('connection') ||
     lowerError.includes('timeout') ||
     lowerError.includes('failed to start download')) {
-    return 'Network error - Check your internet connection';
+    return 'Ошибка сети — проверьте интернет-соединение';
   }
 
   if (lowerError.includes('status:') || lowerError.includes('http')) {
-    return 'Server error - Download temporarily unavailable';
+    return 'Ошибка сервера — загрузка временно недоступна';
   }
 
   if (lowerError.includes('disk') ||
     lowerError.includes('write') ||
     lowerError.includes('file')) {
-    return 'Storage error - Check available disk space';
+    return 'Ошибка хранения — проверьте свободное место на диске';
   }
 
   if (lowerError.includes('invalid') || lowerError.includes('validation')) {
-    return 'File validation failed - Please retry download';
+    return 'Ошибка проверки файла — повторите загрузку';
   }
 
   // Fallback to original error
@@ -86,11 +86,11 @@ function DownloadToastContent({
         </div>
 
         {hasError ? (
-          <p className="text-xs text-red-600">{download.error || 'Download failed'}</p>
+          <p className="text-xs text-red-600">{download.error || 'Ошибка загрузки'}</p>
         ) : isComplete ? (
-          <p className="text-xs text-green-600">Download complete</p>
+          <p className="text-xs text-green-600">Скачивание завершено</p>
         ) : isCancelled ? (
-          <p className="text-xs text-gray-600">Download cancelled</p>
+          <p className="text-xs text-gray-600">Скачивание отменено</p>
         ) : (
           <>
             {/* Progress bar */}
@@ -328,7 +328,7 @@ export function useDownloadProgressToast() {
             : status === 'error'
               ? 'error'
               : 'downloading',
-        error: status === 'error' ? categorizeError(error || 'Download failed') : undefined,
+        error: status === 'error' ? categorizeError(error || 'Ошибка загрузки') : undefined,
       };
 
       updateDownload(model, downloadData);

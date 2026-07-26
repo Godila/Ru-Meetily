@@ -807,7 +807,7 @@ export function ModelSettingsModal({
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Model Settings</h3>
+        <h3 className="text-lg font-semibold">Настройки модели</h3>
       </div>
 
       <div className="space-y-4">
@@ -912,7 +912,7 @@ export function ModelSettingsModal({
                        (modelConfig.provider === 'groq' && isLoadingGroq) ? (
                         <div className="py-6 text-center text-sm text-muted-foreground">
                           <RefreshCw className="mx-auto h-4 w-4 animate-spin mb-2" />
-                          Loading models...
+                          Загрузка моделей...
                         </div>
                       ) : (
                         <>
@@ -960,7 +960,7 @@ export function ModelSettingsModal({
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Base URL of the OpenAI-compatible API
+                Базовый URL OpenAI-совместимого API
               </p>
             </div>
 
@@ -974,7 +974,7 @@ export function ModelSettingsModal({
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Model identifier to use for requests
+                Идентификатор модели для запросов
               </p>
             </div>
 
@@ -996,7 +996,7 @@ export function ModelSettingsModal({
                 className="flex items-center justify-between cursor-pointer py-2"
                 onClick={() => setIsCustomOpenAIAdvancedOpen(!isCustomOpenAIAdvancedOpen)}
               >
-                <Label className="cursor-pointer">Advanced Options</Label>
+                <Label className="cursor-pointer">Дополнительные параметры</Label>
                 {isCustomOpenAIAdvancedOpen ? (
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -1013,7 +1013,7 @@ export function ModelSettingsModal({
                       type="number"
                       value={customMaxTokens}
                       onChange={(e) => setCustomMaxTokens(e.target.value)}
-                      placeholder="e.g., 4096"
+                      placeholder="напр., 4096"
                       className="mt-1"
                     />
                   </div>
@@ -1027,7 +1027,7 @@ export function ModelSettingsModal({
                       max="2"
                       value={customTemperature}
                       onChange={(e) => setCustomTemperature(e.target.value)}
-                      placeholder="e.g., 0.7"
+                      placeholder="напр., 0.7"
                       className="mt-1"
                     />
                   </div>
@@ -1041,7 +1041,7 @@ export function ModelSettingsModal({
                       max="1"
                       value={customTopP}
                       onChange={(e) => setCustomTopP(e.target.value)}
-                      placeholder="e.g., 0.9"
+                      placeholder="напр., 0.9"
                       className="mt-1"
                     />
                   </div>
@@ -1061,12 +1061,12 @@ export function ModelSettingsModal({
               {isTestingConnection ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Testing Connection...
+                  Проверка подключения...
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Test Connection
+                  Проверить подключение
                 </>
               )}
             </Button>
@@ -1123,7 +1123,7 @@ export function ModelSettingsModal({
               className="flex items-center justify-between cursor-pointer py-2"
               onClick={() => setIsEndpointSectionCollapsed(!isEndpointSectionCollapsed)}
             >
-              <Label className="cursor-pointer">Custom Endpoint (optional)</Label>
+              <Label className="cursor-pointer">Свой эндпоинт (необязательно)</Label>
               {isEndpointSectionCollapsed ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -1134,7 +1134,7 @@ export function ModelSettingsModal({
             {!isEndpointSectionCollapsed && (
               <>
                 <p className="text-sm text-muted-foreground mt-1 mb-2">
-                  Leave empty or enter a custom endpoint (e.g., http://x.yy.zz:11434)
+                  Оставьте пустым или укажите свой эндпоинт (напр., http://x.yy.zz:11434)
                 </p>
                 <div className="flex gap-2 mt-1">
                   <div className="relative flex-1">
@@ -1198,10 +1198,10 @@ export function ModelSettingsModal({
         {modelConfig.provider === 'ollama' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-bold">Available Ollama Models</h4>
+              <h4 className="text-sm font-bold">Доступные модели Ollama</h4>
               {lastFetchedEndpoint && models.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Using:</span>
+                  <span className="text-muted-foreground">Используется:</span>
                   <code className="px-2 py-1 bg-muted rounded text-xs">
                     {lastFetchedEndpoint || 'http://localhost:11434'}
                   </code>
@@ -1221,7 +1221,7 @@ export function ModelSettingsModal({
             {isLoadingOllama ? (
               <div className="text-center py-8 text-muted-foreground">
                 <RefreshCw className="mx-auto h-8 w-8 animate-spin mb-2" />
-                Loading models...
+                Загрузка моделей...
               </div>
             ) : models.length === 0 ? (
               <div className="space-y-3">
@@ -1230,7 +1230,7 @@ export function ModelSettingsModal({
                   <div className="space-y-4">
                     <Alert className="border-orange-500 bg-orange-50">
                       <AlertDescription className="text-orange-800">
-                        Ollama is not installed or not running. Please download and install Ollama to use local models.
+                        Ollama не установлен или не запущен. Скачайте и установите Ollama для использования локальных моделей.
                       </AlertDescription>
                     </Alert>
                     <Button
@@ -1240,10 +1240,10 @@ export function ModelSettingsModal({
                       className="w-full bg-blue-600 hover:bg-blue-700"
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Download Ollama
+                      Скачать Ollama
                     </Button>
                     <div className="text-sm text-muted-foreground text-center">
-                      After installing Ollama, restart this application and click "Загрузить модели" to continue.
+                      После установки Ollama перезапустите приложение и нажмите «Загрузить модели» для продолжения.
                     </div>
                   </div>
                 ) : (
@@ -1253,7 +1253,7 @@ export function ModelSettingsModal({
                       <AlertDescription>
                         {ollamaEndpointChanged
                           ? 'Endpoint changed. Click "Загрузить модели" to load models from the new endpoint.'
-                          : 'No models found. Download a recommended model or click "Загрузить модели" to load available Ollama models.'}
+                          : 'Модели не найдены. Скачайте рекомендованную модель или нажмите "Загрузить модели" для загрузки доступных моделей Ollama.'}
                       </AlertDescription>
                     </Alert>
                     {!ollamaEndpointChanged && (
@@ -1305,7 +1305,7 @@ export function ModelSettingsModal({
                 {filteredModels.length === 0 ? (
                   <Alert>
                     <AlertDescription>
-                      No models found matching "{searchQuery}". Try a different search term.
+                      Модели по запросу "{searchQuery}" не найдены. Попробуйте другой запрос.
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -1332,7 +1332,7 @@ export function ModelSettingsModal({
                         >
                           <div>
                             <b className="font-bold">{model.name}&nbsp;</b>
-                            <span className="text-muted-foreground">with a size of </span>
+                            <span className="text-muted-foreground">размером </span>
                             <span className="font-mono font-bold text-sm">{model.size}</span>
                           </div>
 
@@ -1340,7 +1340,7 @@ export function ModelSettingsModal({
                           {modelIsDownloading && progress !== undefined && (
                             <div className="mt-3 pt-3 border-t border-gray-200">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-blue-600">Downloading...</span>
+                                <span className="text-sm font-medium text-blue-600">Загрузка...</span>
                                 <span className="text-sm font-semibold text-blue-600">{Math.round(progress)}%</span>
                               </div>
                               <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">

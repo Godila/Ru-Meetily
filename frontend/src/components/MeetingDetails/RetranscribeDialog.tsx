@@ -278,26 +278,26 @@ export function RetranscribeDialog({
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                Retranscribing...
+                Повторная транскрипция...
               </>
             ) : error ? (
               <>
                 <AlertCircle className="h-5 w-5 text-red-600" />
-                Retranscription Failed
+                Ошибка повторной транскрипции
               </>
             ) : (
               <>
                 <RefreshCw className="h-5 w-5 text-blue-600" />
-                Retranscribe Meeting
+                Повторная транскрипция встречи
               </>
             )}
           </DialogTitle>
           <DialogDescription>
             {isProcessing
-              ? progress?.message || 'Processing audio...'
+              ? progress?.message || 'Обработка аудио...'
               : error
-                ? 'An error occurred during retranscription'
-                : 'Re-process the audio with different language settings'}
+                ? 'Произошла ошибка во время повторной транскрипции'
+                : 'Расшифровать аудио заново с другими настройками языка'}
           </DialogDescription>
         </DialogHeader>
 
@@ -307,11 +307,11 @@ export function RetranscribeDialog({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Language</span>
+                  <span className="text-sm font-medium">Язык</span>
                 </div>
                 <Select value={selectedLang} onValueChange={setSelectedLang}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select language" />
+                    <SelectValue placeholder="Выберите язык" />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {LANGUAGES.map((lang) => (
@@ -322,17 +322,17 @@ export function RetranscribeDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Select a specific language to improve accuracy, or use auto-detect
+                  Выберите конкретный язык для повышения точности или используйте автоопределение
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Language</span>
+                  <span className="text-sm font-medium">Язык</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Language selection isn't supported for this model. It always uses its built-in language (Parakeet = English, GigaAM = Russian).
+                  Выбор языка не поддерживается для этой модели. Она всегда использует встроенный язык (Parakeet = английский, GigaAM = русский).
                 </p>
               </div>
             )
@@ -342,11 +342,11 @@ export function RetranscribeDialog({
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Cpu className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Model</span>
+                <span className="text-sm font-medium">Модель</span>
               </div>
               <Select value={selectedModelKey} onValueChange={setSelectedModelKey} disabled={loadingModels}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={loadingModels ? "Loading models..." : "Select model"} />
+                  <SelectValue placeholder={loadingModels ? "Загрузка моделей..." : "Выберите модель"} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableModels.map((model) => (
@@ -357,7 +357,7 @@ export function RetranscribeDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Choose a transcription model
+                Выберите модель транскрипции
               </p>
             </div>
           )}
@@ -393,7 +393,7 @@ export function RetranscribeDialog({
           {!isProcessing && !error && (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                Отмена
               </Button>
               <Button
                 onClick={handleStartRetranscription}
@@ -401,20 +401,20 @@ export function RetranscribeDialog({
                 disabled={!meetingFolderPath}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Start Retranscription
+                Начать повторную транскрипцию
               </Button>
             </>
           )}
           {isProcessing && (
             <Button variant="outline" onClick={handleCancel}>
               <X className="h-4 w-4 mr-2" />
-              Cancel
+              Отмена
             </Button>
           )}
           {error && (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
+                Закрыть
               </Button>
               <Button
                 onClick={() => {
@@ -423,7 +423,7 @@ export function RetranscribeDialog({
                 }}
                 variant="outline"
               >
-                Try Again
+                Попробовать снова
               </Button>
             </>
           )}
