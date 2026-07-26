@@ -29,7 +29,7 @@ export function EmptyStateSummary({ onGenerate, hasModel, isGenerating = false }
         Резюме ещё не сгенерировано
       </h3>
       <p className="text-sm text-gray-500 mb-6 max-w-md">
-        Создайте ИИ-резюме транскрипции встречи, чтобы получить ключевые моменты, задачи и решения.
+        Создайте резюме транскрипции встречи, чтобы получить ключевые моменты, задачи и решения.
       </p>
 
       <TooltipProvider>

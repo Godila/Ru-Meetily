@@ -249,10 +249,10 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                 <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-blue-500 animate-pulse'}`}></div>
                             </div>
                             <p className="text-sm text-gray-600">
-                                {isPaused ? 'Запись на паузе' : 'Слушаю речь...'}
+                                {isPaused ? 'Запись на паузе' : 'Идёт распознавание...'}
                             </p>
                             <p className="text-xs mt-1 text-gray-400">
-                                {isPaused ? 'Нажмите «Продолжить» для возобновления записи' : 'Говорите, чтобы увидеть живую транскрипцию'}
+                                {isPaused ? 'Нажмите «Продолжить» для возобновления записи' : 'Начните говорить — текст появится здесь'}
                             </p>
                         </>
                     ) : (

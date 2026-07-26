@@ -95,7 +95,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded p-1">
             <p className="text-xs text-amber-800 font-medium">
-              Требуется соблюдение норм США о записи
+              Нужно согласие участников на запись
             </p>
           </div>
         </div>
@@ -116,7 +116,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
             className="text-xs px-2 py-0.5 h-6 bg-green-600 hover:bg-green-700 flex-1"
           >
             <CheckCircle className="h-2 w-2 mr-1" />
-            Готово
+            Понятно
           </Button>
         </div>
       </div>

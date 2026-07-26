@@ -167,7 +167,7 @@ export default function AnalyticsConsentSwitch() {
           <div>
             <h4 className="font-semibold text-gray-800">Включить аналитику</h4>
             <p className="text-sm text-gray-600">
-              {isProcessing ? 'Обновление...' : 'Выключена, пока вы не включите её'}
+              {isProcessing ? 'Сохранение...' : 'Отключена — включите, чтобы поделиться данными'}
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">

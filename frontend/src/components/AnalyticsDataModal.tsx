@@ -144,13 +144,13 @@ export default function AnalyticsDataModal({ isOpen, onClose, onConfirmDisable }
             onClick={onClose}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           >
-            Оставить аналитику включённой
+            Оставить включённой
           </button>
           <button
             onClick={onConfirmDisable}
             className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
           >
-            Подтвердить: отключить аналитику
+            Отключить аналитику
           </button>
         </div>
       </div>

@@ -101,7 +101,7 @@ export function TranscriptPanel({
       {!isRecording && convertedSegments.length > 0 && (
         <div className="p-1 border-t border-gray-200">
           <textarea
-            placeholder="Добавьте контекст для ИИ-резюме. Например: участники, обзор встречи, цель и т.д..."
+            placeholder="Добавьте контекст для резюме. Например: участники, обзор встречи, цель и т.д..."
             className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm min-h-[80px] resize-y"
             value={customPrompt}
             onChange={(e) => onPromptChange(e.target.value)}

@@ -88,9 +88,9 @@ function DownloadToastContent({
         {hasError ? (
           <p className="text-xs text-red-600">{download.error || 'Ошибка загрузки'}</p>
         ) : isComplete ? (
-          <p className="text-xs text-green-600">Загрузка завершена</p>
+          <p className="text-xs text-green-600">Скачивание завершено</p>
         ) : isCancelled ? (
-          <p className="text-xs text-gray-600">Загрузка отменена</p>
+          <p className="text-xs text-gray-600">Скачивание отменено</p>
         ) : (
           <>
             {/* Progress bar */}

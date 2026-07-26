@@ -286,10 +286,10 @@ export function SummaryGeneratorButtonGroup({
           disabled={isCheckingModels || isModelConfigLoading}
           title={
             isModelConfigLoading
-              ? 'Loading model configuration...'
+              ? 'Загрузка конфигурации модели...'
               : isCheckingModels
-                ? 'Checking models...'
-                : hasSummary ? 'Перегенерировать резюме' : 'Сгенерировать резюме'
+                ? 'Проверка моделей...'
+                : hasSummary ? 'Обновить резюме' : 'Сгенерировать резюме'
           }
         >
           {isCheckingModels || isModelConfigLoading ? (
@@ -300,7 +300,7 @@ export function SummaryGeneratorButtonGroup({
           ) : (
             <>
               <Sparkles className="xl:mr-2" size={18} />
-              <span className="hidden lg:inline xl:inline">{hasSummary ? 'Перегенерировать резюме' : 'Сгенерировать резюме'}</span>
+              <span className="hidden lg:inline xl:inline">{hasSummary ? 'Обновить резюме' : 'Сгенерировать резюме'}</span>
             </>
           )}
         </Button>

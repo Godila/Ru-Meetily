@@ -232,7 +232,7 @@ export function BuiltInModelManager({
   const cancelDownload = async (modelName: string) => {
     try {
       await invoke('builtin_ai_cancel_download', { modelName });
-      toast.info(`Загрузка ${modelName} отменена`);
+      toast.info(`Скачивание ${modelName} отменено`);
       setDownloadingModels((prev) => {
         const newSet = new Set(prev);
         newSet.delete(modelName);
@@ -456,7 +456,7 @@ export function BuiltInModelManager({
               {modelIsDownloading && progress !== undefined && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-900">Загрузка...</span>
+                    <span className="text-sm font-medium text-gray-900">Скачивание...</span>
                     <span className="text-sm font-semibold text-gray-900">
                       {Math.round(progress)}%
                     </span>

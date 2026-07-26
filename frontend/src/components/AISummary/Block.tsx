@@ -32,28 +32,28 @@ const COMMANDS: CommandOption[] = [
     label: 'Текст',
     type: 'text',
     icon: 'T',
-    description: 'Просто начните писать обычный текст'
+    description: 'Обычный абзац текста'
   },
   {
     id: 'bullet',
     label: 'Маркированный список',
     type: 'bullet',
     icon: '•',
-    description: 'Создать маркированный список'
+    description: 'Список с точками-маркерами'
   },
   {
     id: 'h1',
     label: 'Заголовок 1',
     type: 'heading1',
     icon: 'H1',
-    description: 'Крупный заголовок раздела'
+    description: 'Крупный заголовок'
   },
   {
     id: 'h2',
     label: 'Заголовок 2',
     type: 'heading2',
     icon: 'H2',
-    description: 'Средний заголовок раздела'
+    description: 'Подзаголовок'
   },
 ];
 

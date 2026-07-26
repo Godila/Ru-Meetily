@@ -22,7 +22,7 @@ export function ModelDownloadProgress({ status, modelName, onCancel }: ModelDown
         <div className="flex items-center space-x-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           <span className="text-sm font-medium text-blue-900">
-            {isCompleted ? 'Завершение...' : `Загрузка ${modelName}`}
+            {isCompleted ? 'Завершение...' : `Скачивание ${modelName}`}
           </span>
         </div>
       </div>
@@ -37,14 +37,14 @@ export function ModelDownloadProgress({ status, modelName, onCancel }: ModelDown
         <div className="flex justify-between text-xs text-blue-700 mt-1">
           <span>{Math.round(progress)}% завершено</span>
           {!isCompleted && (
-            <span className="animate-pulse">Загрузка...</span>
+            <span className="animate-pulse">Скачивание...</span>
           )}
         </div>
       </div>
       
       {isCompleted && (
         <div className="mt-2 text-xs text-green-700">
-          ✓ Загрузка завершена, загрузка модели...
+          ✓ Скачивание завершено, загрузка модели...
         </div>
       )}
     </div>

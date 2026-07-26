@@ -92,7 +92,7 @@ export function AudioBackendSelector({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-gray-700">
-          Бэкенд системного аудио
+          Способ захвата системного аудио
         </label>
         <div className="relative">
           <button
@@ -114,7 +114,7 @@ export function AudioBackendSelector({
                 ))}
               </ul>
               <p className="mt-2 text-gray-300">
-                Попробуйте разные бэкенды, чтобы найти подходящий для вашей системы.
+                Попробуйте разные способы, чтобы найти подходящий для вашей системы.
               </p>
             </div>
           )}
@@ -175,7 +175,7 @@ export function AudioBackendSelector({
       </div>
 
       <div className="text-xs text-gray-500 space-y-1">
-        <p>• Выбор бэкенда влияет только на захват системного аудио</p>
+        <p>• Выбор способа влияет только на захват системного аудио</p>
         <p>• Микрофон всегда использует метод по умолчанию</p>
         <p>• Изменения применятся к новым записям</p>
       </div>
