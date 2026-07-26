@@ -25,7 +25,7 @@ pub(crate) fn summary_model_priority(model_name: &str) -> u8 {
     }
 }
 
-pub(crate) fn recommend_summary_model(_is_macos: bool, system_ram_gb: u64) -> &'static str {
+pub fn recommend_summary_model(_is_macos: bool, system_ram_gb: u64) -> &'static str {
     if system_ram_gb >= QWEN35_4B_RECOMMENDED_RAM_GB {
         "qwen3.5:4b"
     } else {
@@ -57,7 +57,7 @@ pub struct InferencePlan {
 /// - No GPU detected → CPU, force_cpu=true.
 /// - GPU detected but user disabled → CPU, force_cpu=true.
 /// - GPU detected and enabled → GPU mode, force_cpu=false.
-pub(crate) fn decide_inference(profile: &HardwareProfile, use_gpu: bool) -> InferencePlan {
+pub fn decide_inference(profile: &HardwareProfile, use_gpu: bool) -> InferencePlan {
     if !profile.has_gpu_acceleration {
         return InferencePlan {
             inference_mode: "CPU".to_string(),
