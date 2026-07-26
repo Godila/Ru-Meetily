@@ -39,17 +39,6 @@ export function UpdateCheckProvider({ children }: { children: React.ReactNode })
     };
   }, [handleShowDialog]);
 
-  // Listen for tray menu events
-  useEffect(() => {
-    const handleTrayCheck = () => {
-      checkForUpdates(true); // Force check from tray
-      setShowDialog(true);
-    };
-
-    window.addEventListener('check-updates-from-tray', handleTrayCheck);
-    return () => window.removeEventListener('check-updates-from-tray', handleTrayCheck);
-  }, [checkForUpdates]);
-
   return (
     <UpdateCheckContext.Provider
       value={{
