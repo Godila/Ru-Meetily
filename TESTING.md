@@ -93,9 +93,37 @@ Env-переменные:
 Тест требует, чтобы модель уже была скачана (через UI приложения) — он её не
 докачивает. Если модель не `Available`, тест упадёт с понятной диагностикой.
 
+### Rust integration tests (`tests/` папка)
+
+Помимо unit-тестов в `src/`, в `frontend/src-tauri/tests/` лежат
+интеграционные тесты — они компилируются отдельным бинарником и видят только
+`pub`-API крейта (не `pub(crate)`). Это даёт честное black-box-покрытие
+бизнес-логики без GUI.
+
+```bash
+cd frontend/src-tauri
+cargo test --test hardware_integration                  # детерминированные
+cargo test --test hardware_integration -- --ignored     # + реальный детект железа
+```
+
+`tests/hardware_integration.rs` покрывает фичу GPU-toggle:
+- `use_gpu_persistence_round_trip` (true/false round-trip через
+  in-memory SQLite + все миграции)
+- `use_gpu_null_defaults_to_hardware` (NULL в БД → hardware default)
+- `decide_inference` — 4 кейса (no-GPU, user-disabled, Vulkan, Metal)
+- `recommend_summary_model` — high-RAM → 4b, low-RAM → 2b
+- `#[ignore] hardware_detect_runs_on_real_machine` — реальный детект на
+  текущей машине (как GigaAM real-audio тест)
+
+**Паттерн:** in-memory pool `SqlitePool::connect("sqlite::memory:")` +
+`sqlx::migrate!("./migrations")`. Каждый тест получает чистую БД. Для
+`decide_inference`/`recommend_summary_model` их пришлось поднять с
+`pub(crate)` до `pub` (минорное изменение, они чистые функции без
+зависимостей от приватного).
+
 ### Frontend
 
-Тесты — **vitest** + `@testing-library/react` + jsdom. 57 тестов в 6 файлах:
+Тесты — **vitest** + `@testing-library/react` + jsdom. 68 тестов в 7 файлах:
 
 ```bash
 cd frontend
@@ -118,6 +146,11 @@ pnpm run typecheck:tests   # типы тестов (tsconfig.vitest.json)
 - `src/hooks/meeting-details/__tests__/useTemplates.test.ts` — хук CRUD:
   initial load, selection, editor lifecycle, create/update/delete/json (invoke
   замокан через `vi.hoisted` + `vi.mock('@tauri-apps/api/core')`)
+- `src/lib/__tests__/hardware-display.test.ts` — pure-функции отображения
+  карточки железа (`gpuLabel`, `vramLabel`, `inferenceBadgeClass`,
+  `isInferenceGpu`): 11 тестов. Логика вынесена из `SetupOverviewStep` в
+  `lib/hardware-display.ts` ради тестируемости (рендер всего онбординг-степа
+  слишком дорогой — тянет `useOnboarding`, `plugin-os` и т.д.).
 
 **Паттерн для тестирования Tauri-хуков:** мокаем `@tauri-apps/api/core` →
 `invoke` через `vi.hoisted` (обязательно, иначе хойстинг `vi.mock` ломает
@@ -131,6 +164,27 @@ pnpm run typecheck:tests   # типы тестов (tsconfig.vitest.json)
 - `tsconfig.json` — исключает тесты и vitest-файлы (Next.js их не компилирует)
 - `tsconfig.vitest.json` — включает только тесты с vitest-глобалами
 - `tsconfig.ci.json` — для CI: src без тестов
+
+#### Почему нет UI-e2e (Playwright/Cypress)
+
+Браузерный e2e для Tauri-приложения **не работает** через стандартный приём
+с `window.__TAURI__`-моком. `@tauri-apps/api` v2 дёргает
+`window.__TAURI_INTERNALS__.invoke` / `.transformCallback` — этого объекта не
+существует вне desktop shell, поэтому любой `invoke()` из любого компонента
+падает в обычном браузере (dev-сервер Next.js). Подмена на уровне модулей
+(webpack alias `@tauri-apps/api/core`) глобальна и рискует сломать
+production-build, плюс всё равно сыпятся ошибки из `RecordingService`,
+`TranscriptContext` и т.д.
+
+Покрытие бизнес-логики фичи получают через **Rust integration tests**
+(см. выше) + **vitest pure-тесты** для форматирования UI. Этого достаточно для
+карточки железа и переключателя GPU — их рендер тривиален, ценность в логике.
+
+**Когда вернуться к настоящему e2e:** только через `tauri-driver` (WebDriver
++ ночной билд `.exe` + GUI-сессия). Это единственный надёжный путь для
+полноценного end-to-end Tauri; оправдан, когда появится сложная
+многошаговая UI-логика (онбординг с реальной навигацией, multi-tab flows).
+Для текущей фичи это overkill.
 
 Next.js dev-сервер на `localhost:3118` можно открывать в обычном браузере для
 отладки UI/CSS — но любой путь, вызывающий `invoke('...')`, упадёт вне Tauri
