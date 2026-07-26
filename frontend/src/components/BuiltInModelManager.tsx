@@ -259,7 +259,7 @@ export function BuiltInModelManager({
     return (
       <div className="text-center py-8 text-muted-foreground">
         <RefreshCw className="mx-auto h-8 w-8 animate-spin mb-2" />
-        Loading models...
+        Загрузка моделей...
       </div>
     );
   }
@@ -269,7 +269,7 @@ export function BuiltInModelManager({
     return (
       <Alert>
         <AlertDescription>
-          No models found. Download a model to get started with Built-in AI.
+          Модели не найдены. Скачайте модель, чтобы начать работу со встроенным ИИ.
         </AlertDescription>
       </Alert>
     );
@@ -278,7 +278,7 @@ export function BuiltInModelManager({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-bold">Built-in AI Models</h4>
+        <h4 className="text-sm font-bold">Встроенные ИИ-модели</h4>
       </div>
 
       <div
@@ -426,7 +426,7 @@ export function BuiltInModelManager({
                         e.stopPropagation();
                         deleteModel(model.name);
                       }}
-                      title="Delete model"
+                      title="Удалить модель"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -442,8 +442,8 @@ export function BuiltInModelManager({
                     {isError && typeof model.status === 'object' && 'Error' in model.status
                       ? (model.status as any).Error
                       : isCorrupted
-                      ? 'File is corrupted. Retry download or delete.'
-                      : 'An error occurred'}
+                      ? 'Файл повреждён. Повторите загрузку или удалите.'
+                      : 'Произошла ошибка'}
                   </p>
                 )}
                 <div className="text-xs text-gray-500">
@@ -456,7 +456,7 @@ export function BuiltInModelManager({
               {modelIsDownloading && progress !== undefined && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-900">Downloading...</span>
+                    <span className="text-sm font-medium text-gray-900">Загрузка...</span>
                     <span className="text-sm font-semibold text-gray-900">
                       {Math.round(progress)}%
                     </span>

@@ -72,13 +72,13 @@ export function BluetoothPlaybackWarning({
       <div className="flex items-start justify-between w-full">
         <div className="flex-1">
           <AlertTitle className="text-yellow-900 font-semibold">
-            Bluetooth Playback Detected
+            Обнаружено воспроизведение через Bluetooth
           </AlertTitle>
           <AlertDescription className="text-yellow-800 mt-1">
-            You're using <strong>{deviceName}</strong> for playback.
-            Recordings may sound distorted or sped up through Bluetooth devices.
-            For accurate review, please use <strong>computer speakers</strong> or{' '}
-            <strong>wired headphones</strong>.
+            Вы используете <strong>{deviceName}</strong> для воспроизведения.
+            Через Bluetooth-устройства записи могут звучать искажённо или ускоренно.
+            Для точного просмотра используйте <strong>динамики компьютера</strong> или{' '}
+            <strong>проводные наушники</strong>.
             <br />
             <a
               href="https://github.com/your-org/meetily/blob/main/BLUETOOTH_PLAYBACK_NOTICE.md"
@@ -86,7 +86,7 @@ export function BluetoothPlaybackWarning({
               rel="noopener noreferrer"
               className="underline hover:text-yellow-900 font-medium mt-2 inline-block"
             >
-              Learn why this happens →
+              Узнать, почему так происходит →
             </a>
           </AlertDescription>
         </div>
@@ -95,7 +95,7 @@ export function BluetoothPlaybackWarning({
           size="icon"
           onClick={() => setIsDismissed(true)}
           className="ml-4 h-6 w-6 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-100"
-          aria-label="Dismiss warning"
+          aria-label="Закрыть предупреждение"
         >
           <X className="h-4 w-4" />
         </Button>
