@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, File, Settings, ChevronLeftCircle, ChevronRightCircle, Calendar, StickyNote, Home, Trash2, Mic, Square, Plus, Search, Pencil, NotebookPen, SearchIcon, X, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, File, Settings, ChevronLeftCircle, ChevronRightCircle, Calendar, StickyNote, Home, Trash2, Mic, Square, Plus, Search, Pencil, NotebookPen, SearchIcon, X, Upload, Loader2 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSidebar } from './SidebarProvider';
 import type { CurrentMeeting } from '@/components/Sidebar/SidebarProvider';
@@ -54,7 +54,8 @@ const Sidebar: React.FC = () => {
     isSearching,
     meetings,
     setMeetings,
-    serverAddress
+    serverAddress,
+    summaryStatuses
   } = useSidebar();
 
   // Get recording state from RecordingStateContext (single source of truth)
@@ -556,6 +557,14 @@ const Sidebar: React.FC = () => {
     const paddingLeft = `${depth * 12 + 12}px`;
     const isActive = item.type === 'file' && currentMeeting?.id === item.id;
     const isMeetingItem = item.id.includes('-') && !item.id.startsWith('intro-call');
+    // Show a spinner while this meeting's summary is generating (global state,
+    // survives navigation). Driven by SidebarProvider.summaryStatuses.
+    const meetingSummaryStatus = isMeetingItem ? summaryStatuses[item.id] : undefined;
+    const isSummaryGenerating =
+      !!meetingSummaryStatus &&
+      (meetingSummaryStatus === 'processing' ||
+        meetingSummaryStatus === 'summarizing' ||
+        meetingSummaryStatus === 'regenerating');
 
     // Check if this item has a matching transcript snippet
     const matchingResult = isMeetingItem ? findMatchingSnippet(item.id) : null;
@@ -616,6 +625,11 @@ const Sidebar: React.FC = () => {
                   </div>
                 )}
                 <span className="flex-1 break-words">{item.title}</span>
+                {isMeetingItem && isSummaryGenerating && (
+                  <span title="Генерация резюме…" className="flex-shrink-0 mr-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" aria-label="Генерация резюме" />
+                  </span>
+                )}
                 {isMeetingItem && (
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                     <button

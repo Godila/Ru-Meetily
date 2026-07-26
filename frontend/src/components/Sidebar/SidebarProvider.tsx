@@ -1,10 +1,40 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { useRecordingState } from '@/contexts/RecordingStateContext';
+
+/**
+ * Summary generation status, shared between SidebarProvider (global) and
+ * useSummaryGeneration (page-local). Lifted here so the Sidebar can show a
+ * spinner per meeting that survives navigation.
+ */
+export type SummaryStatus =
+  | 'idle'
+  | 'processing'
+  | 'summarizing'
+  | 'regenerating'
+  | 'completed'
+  | 'error';
+
+/** Backend statuses that map to "generation in progress" for the sidebar spinner. */
+const ACTIVE_SUMMARY_STATUSES: ReadonlySet<SummaryStatus> = new Set([
+  'processing',
+  'summarizing',
+  'regenerating',
+]);
+
+/** Map backend api_get_summary status string -> our SummaryStatus. */
+function backendStatusToSummaryStatus(backendStatus: string): SummaryStatus {
+  const s = backendStatus.toLowerCase();
+  if (s === 'completed') return 'completed';
+  if (s === 'error' || s === 'failed') return 'error';
+  // pending / processing both show as "processing" spinner in the sidebar
+  if (s === 'pending' || s === 'processing') return 'processing';
+  return 'idle';
+}
 
 
 interface SidebarItem {
@@ -49,6 +79,9 @@ interface SidebarContextType {
   activeSummaryPolls: Map<string, NodeJS.Timeout>;
   startSummaryPolling: (meetingId: string, processId: string, onUpdate: (result: any) => void) => void;
   stopSummaryPolling: (meetingId: string) => void;
+  // Per-meeting summary status — survives navigation, drives the sidebar spinner.
+  summaryStatuses: Record<string, SummaryStatus>;
+  setSummaryStatus: (meetingId: string, status: SummaryStatus) => void;
   // Refetch meetings from backend
   refetchMeetings: () => Promise<void>;
 
@@ -75,6 +108,16 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [serverAddress, setServerAddress] = useState('');
   const [transcriptServerAddress, setTranscriptServerAddress] = useState('');
   const [activeSummaryPolls, setActiveSummaryPolls] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  // Ref mirror so polling callbacks (which must be stable) can read the latest map.
+  const activeSummaryPollsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Per-meeting summary status, lifted into global state so the Sidebar can show
+  // a spinner that survives navigation away from the meeting-details page.
+  const [summaryStatuses, setSummaryStatuses] = useState<Record<string, SummaryStatus>>({});
+
+  // Keep the ref mirror in sync whenever the state map changes.
+  useEffect(() => {
+    activeSummaryPollsRef.current = activeSummaryPolls;
+  }, [activeSummaryPolls]);
 
   // Use recording state from RecordingStateContext (single source of truth)
   const { isRecording } = useRecordingState();
@@ -184,18 +227,40 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Summary polling management
-  const startSummaryPolling = React.useCallback((
+  // Summary polling management.
+  //
+  // IMPORTANT: these callbacks read the polling map via activeSummaryPollsRef
+  // (a ref mirror), NOT the state directly, so they can be stable (empty dep
+  // array). This prevents the meeting-details page's polling effect from being
+  // torn down and re-subscribed on every status change, which previously caused
+  // premature polling cancellation when navigating away.
+  const stopPollInternal = useCallback((meetingId: string) => {
+    const interval = activeSummaryPollsRef.current.get(meetingId);
+    if (interval) {
+      clearInterval(interval);
+    }
+    setActiveSummaryPolls(prev => {
+      if (!prev.has(meetingId)) return prev;
+      const next = new Map(prev);
+      next.delete(meetingId);
+      return next;
+    });
+    // ref mirror is updated by the [activeSummaryPolls] effect above
+  }, []);
+
+  const startSummaryPolling = useCallback((
     meetingId: string,
     processId: string,
     onUpdate: (result: any) => void
   ) => {
-    // Stop existing poll for this meeting if any
-    if (activeSummaryPolls.has(meetingId)) {
-      clearInterval(activeSummaryPolls.get(meetingId)!);
-    }
+    // Stop existing poll for this meeting if any (idempotent resume)
+    stopPollInternal(meetingId);
 
     console.log(`📊 Starting polling for meeting ${meetingId}, process ${processId}`);
+
+    // Mark as in-progress immediately so the sidebar spinner shows before the
+    // first 5s poll tick returns.
+    setSummaryStatuses(prev => ({ ...prev, [meetingId]: 'processing' }));
 
     let pollCount = 0;
     const MAX_POLLS = 200; // ~16.5 minutes at 5-second intervals (slightly longer than backend's 15-min timeout to avoid race conditions)
@@ -203,13 +268,14 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     const pollInterval = setInterval(async () => {
       pollCount++;
 
-      // Timeout safety: Stop after 10 minutes
+      // Timeout safety: Stop after ~16.5 minutes
       if (pollCount >= MAX_POLLS) {
         console.warn(`⏱️ Polling timeout for ${meetingId} after ${MAX_POLLS} iterations`);
         clearInterval(pollInterval);
-        setActiveSummaryPolls(prev => {
-          const next = new Map(prev);
-          next.delete(meetingId);
+        stopPollInternal(meetingId);
+        setSummaryStatuses(prev => {
+          const next = { ...prev };
+          delete next[meetingId];
           return next;
         });
         onUpdate({
@@ -228,22 +294,30 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         // Call the update callback with result
         onUpdate(result);
 
+        // Derive our status and keep the global sidebar map in sync.
+        const derived = backendStatusToSummaryStatus(result.status);
+        if (ACTIVE_SUMMARY_STATUSES.has(derived)) {
+          setSummaryStatuses(prev => ({ ...prev, [meetingId]: derived }));
+        }
+
         // Stop polling if completed, error, failed, cancelled, or idle (after initial processing)
         if (result.status === 'completed' || result.status === 'error' || result.status === 'failed' || result.status === 'cancelled') {
           console.log(`Polling completed for ${meetingId}, status: ${result.status}`);
           clearInterval(pollInterval);
-          setActiveSummaryPolls(prev => {
-            const next = new Map(prev);
-            next.delete(meetingId);
+          stopPollInternal(meetingId);
+          setSummaryStatuses(prev => {
+            const next = { ...prev };
+            delete next[meetingId];
             return next;
           });
         } else if (result.status === 'idle' && pollCount > 1) {
           // If we get 'idle' after polling started, process completed/disappeared
           console.log(`Process completed or not found for ${meetingId}, stopping poll`);
           clearInterval(pollInterval);
-          setActiveSummaryPolls(prev => {
-            const next = new Map(prev);
-            next.delete(meetingId);
+          stopPollInternal(meetingId);
+          setSummaryStatuses(prev => {
+            const next = { ...prev };
+            delete next[meetingId];
             return next;
           });
         }
@@ -255,39 +329,47 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           error: error instanceof Error ? error.message : 'Unknown error'
         });
         clearInterval(pollInterval);
-        setActiveSummaryPolls(prev => {
-          const next = new Map(prev);
-          next.delete(meetingId);
+        stopPollInternal(meetingId);
+        setSummaryStatuses(prev => {
+          const next = { ...prev };
+          delete next[meetingId];
           return next;
         });
       }
     }, 5000); // Poll every 5 seconds
 
     setActiveSummaryPolls(prev => new Map(prev).set(meetingId, pollInterval));
-  }, [activeSummaryPolls]);
+  }, [stopPollInternal]);
 
-  const stopSummaryPolling = React.useCallback((meetingId: string) => {
-    const pollInterval = activeSummaryPolls.get(meetingId);
-    if (pollInterval) {
-      console.log(`⏹️ Stopping polling for meeting ${meetingId}`);
-      clearInterval(pollInterval);
-      setActiveSummaryPolls(prev => {
-        const next = new Map(prev);
-        next.delete(meetingId);
-        return next;
-      });
-    }
-  }, [activeSummaryPolls]);
+  const stopSummaryPolling = useCallback((meetingId: string) => {
+    console.log(`⏹️ Stopping polling for meeting ${meetingId}`);
+    stopPollInternal(meetingId);
+    setSummaryStatuses(prev => {
+      if (!(meetingId in prev)) return prev;
+      const next = { ...prev };
+      delete next[meetingId];
+      return next;
+    });
+  }, [stopPollInternal]);
 
-  // Cleanup all polling intervals on unmount
-  useEffect(() => {
-    return () => {
-      console.log('🧹 Cleaning up all summary polling intervals');
-      activeSummaryPolls.forEach(interval => clearInterval(interval));
-    };
-  }, [activeSummaryPolls]);
-
-
+  /**
+   * Manually set / clear a meeting's summary status. Used by useSummaryGeneration
+   * to reflect local transitions (e.g. 'regenerating') immediately, and by the
+   * meeting-details mount effect to seed the status from api_get_summary before
+   * polling resumes.
+   */
+  const setSummaryStatus = useCallback((meetingId: string, status: SummaryStatus) => {
+    setSummaryStatuses(prev => {
+      if (ACTIVE_SUMMARY_STATUSES.has(status)) {
+        return { ...prev, [meetingId]: status };
+      }
+      // Non-active status -> clear the entry
+      if (!(meetingId in prev)) return prev;
+      const next = { ...prev };
+      delete next[meetingId];
+      return next;
+    });
+  }, []);
 
   return (
     <SidebarContext.Provider value={{
@@ -311,6 +393,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       activeSummaryPolls,
       startSummaryPolling,
       stopSummaryPolling,
+      summaryStatuses,
+      setSummaryStatus,
       refetchMeetings: fetchMeetings,
 
     }}>

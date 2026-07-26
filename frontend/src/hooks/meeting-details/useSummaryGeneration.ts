@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Transcript, Summary } from '@/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 import { CurrentMeeting, useSidebar } from '@/components/Sidebar/SidebarProvider';
@@ -33,10 +33,31 @@ export function useSummaryGeneration({
   setAiSummary,
   onOpenModelSettings,
 }: UseSummaryGenerationProps) {
-  const [summaryStatus, setSummaryStatus] = useState<SummaryStatus>('idle');
+  const [summaryStatus, setSummaryStatusLocal] = useState<SummaryStatus>('idle');
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  const { startSummaryPolling, stopSummaryPolling } = useSidebar();
+  const { startSummaryPolling, stopSummaryPolling, setSummaryStatus: setGlobalSummaryStatus, summaryStatuses } = useSidebar();
+
+  // Keep both local (page UI) and global (sidebar spinner) status in sync.
+  // Active statuses propagate to the global map so the sidebar shows a spinner;
+  // terminal/idle statuses clear the global entry.
+  const setSummaryStatus = useCallback((status: SummaryStatus) => {
+    setSummaryStatusLocal(status);
+    setGlobalSummaryStatus(meeting.id, status as any);
+  }, [meeting.id, setGlobalSummaryStatus]);
+
+  // On mount / meeting switch: if the global map already knows this meeting is
+  // generating (e.g. user navigated away and came back), seed the local status
+  // so the page UI shows the spinner instead of idle.
+  useEffect(() => {
+    const globalStatus = summaryStatuses[meeting.id];
+    if (globalStatus && (globalStatus === 'processing' || globalStatus === 'summarizing' || globalStatus === 'regenerating')) {
+      setSummaryStatusLocal(globalStatus as SummaryStatus);
+    }
+    // Only re-seed when the meeting changes; subsequent updates arrive through
+    // the polling callback which calls setSummaryStatus directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meeting.id]);
 
   // Helper to get status message
   const getSummaryStatusMessage = useCallback((status: SummaryStatus) => {
