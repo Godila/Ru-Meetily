@@ -91,6 +91,7 @@ fn build_final_report_system_prompt(
 7. If unsure about something, omit it.
 8. Do NOT produce any reasoning, chain-of-thought, or `<think>` blocks. Respond directly with the report.
 9. Translate every template section heading (e.g. "Summary", "Key Decisions", "Action Items", "Discussion Highlights") into Russian (e.g. "Краткое содержание", "Ключевые решения", "Задачи", "Основные темы обсуждения"). Keep markdown markers intact.
+10. **NEVER hallucinate table fields.** In Action Items and similar tables, every cell (Owner, Due date, timestamp, etc.) MUST come verbatim from the transcript. Roles like "Архитектор платформы" or "Финансовый менеджер" are FORBIDDEN unless the speaker is explicitly named that way. If the transcript does not state an owner, due date, or timestamp for a task, write exactly "Не указан" in that cell — do not invent a plausible-sounding value.
 
 **SECTION-SPECIFIC INSTRUCTIONS:**
 {section_instructions}
@@ -474,6 +475,18 @@ mod tests {
         assert!(prompt.contains("SECTION-SPECIFIC INSTRUCTIONS"));
         // Rule 9: explicit instruction to translate template section headings into Russian
         assert!(prompt.contains("Translate every template section heading"));
+    }
+
+    #[test]
+    fn final_report_prompt_forbids_hallucinated_table_fields() {
+        let prompt = build_final_report_system_prompt("Fill the section", "# <Add Title here>");
+
+        // Rule 10: anti-hallucination guard for Action Items tables.
+        assert!(prompt.contains("NEVER hallucinate table fields"));
+        assert!(prompt.contains("Не указан"));
+        // Explicitly forbid invented job titles/roles that models tend to fabricate.
+        assert!(prompt.contains("Архитектор платформы"));
+        assert!(prompt.contains("FORBIDDEN"));
     }
 
     #[test]
