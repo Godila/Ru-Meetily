@@ -34,7 +34,7 @@ export function SettingTabs({
         <Tabs defaultValue={defaultTab} className="w-full max-h-[calc(100vh-10rem)] overflow-y-auto" onValueChange={handleTabChange}>
   <TabsList>
     <TabsTrigger value="transcriptSettings">Транскрипция</TabsTrigger>
-    <TabsTrigger value="modelSettings">Резюме</TabsTrigger>
+    <TabsTrigger value="modelSettings">ИИ-модели</TabsTrigger>
     <TabsTrigger value="recordingSettings">Настройки</TabsTrigger>
     <TabsTrigger value="about">О приложении</TabsTrigger>
   </TabsList>

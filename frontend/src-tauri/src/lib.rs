@@ -46,7 +46,6 @@ pub mod ollama;
 pub mod onboarding;
 pub mod openai;
 pub mod anthropic;
-pub mod groq;
 pub mod openrouter;
 pub mod caila;
 pub mod parakeet_engine;
@@ -656,7 +655,6 @@ pub fn run() {
             ollama::get_ollama_model_context,
             openai::openai::get_openai_models,
             anthropic::anthropic::get_anthropic_models,
-            groq::groq::get_groq_models,
             caila::caila::get_caila_models,
             api::api_get_meetings,
             api::api_search_transcripts,

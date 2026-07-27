@@ -31,7 +31,7 @@ import { cn, isOllamaNotInstalledError } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export interface ModelConfig {
-  provider: 'ollama' | 'groq' | 'claude' | 'openai' | 'openrouter' | 'builtin-ai' | 'custom-openai' | 'caila';
+  provider: 'ollama' | 'claude' | 'openai' | 'openrouter' | 'builtin-ai' | 'custom-openai' | 'caila';
   model: string;
   whisperModel: string;
   apiKey?: string | null;
@@ -72,11 +72,6 @@ interface AnthropicModel {
   display_name?: string;
 }
 
-interface GroqModel {
-  id: string;
-  owned_by?: string;
-}
-
 interface CailaModel {
   id: string;
   owned_by?: string;
@@ -100,13 +95,6 @@ const CLAUDE_FALLBACK_MODELS = [
   'claude-haiku-4-5-20251001',
   'claude-opus-4-5-20251101',
   'claude-3-5-sonnet-latest',
-];
-
-const GROQ_FALLBACK_MODELS = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-70b-versatile',
-  'mixtral-8x7b-32768',
-  'gemma2-9b-it',
 ];
 
 // Caila fallback models — known-good IDs verified against the live API.
@@ -194,14 +182,12 @@ export function ModelSettingsModal({
   // Combobox state
   const [modelComboboxOpen, setModelComboboxOpen] = useState<boolean>(false);
 
-  // Dynamic model fetching state for OpenAI, Claude, Groq, and Caila
+  // Dynamic model fetching state for OpenAI, Claude, and Caila
   const [openaiModels, setOpenaiModels] = useState<string[]>([]);
   const [claudeModels, setClaudeModels] = useState<string[]>([]);
-  const [groqModels, setGroqModels] = useState<string[]>([]);
   const [cailaModels, setCailaModels] = useState<string[]>([]);
   const [isLoadingOpenAI, setIsLoadingOpenAI] = useState<boolean>(false);
   const [isLoadingClaude, setIsLoadingClaude] = useState<boolean>(false);
-  const [isLoadingGroq, setIsLoadingGroq] = useState<boolean>(false);
   const [isLoadingCaila, setIsLoadingCaila] = useState<boolean>(false);
   const [isTestingCailaConnection, setIsTestingCailaConnection] = useState<boolean>(false);
   const [cailaConnectionMessage, setCailaConnectionMessage] = useState<string | null>(null);
@@ -266,7 +252,6 @@ export function ModelSettingsModal({
   const modelOptions: Record<string, string[]> = {
     ollama: models.map((model) => model.name),
     claude: claudeModels.length > 0 ? claudeModels : CLAUDE_FALLBACK_MODELS,
-    groq: groqModels.length > 0 ? groqModels : GROQ_FALLBACK_MODELS,
     openai: openaiModels.length > 0 ? openaiModels : OPENAI_FALLBACK_MODELS,
     openrouter: openRouterModels.map((m) => m.id),
     'builtin-ai': builtinAiModels.map((m) => m.name),
@@ -276,7 +261,6 @@ export function ModelSettingsModal({
 
   const requiresApiKey =
     modelConfig.provider === 'claude' ||
-    modelConfig.provider === 'groq' ||
     modelConfig.provider === 'openai' ||
     modelConfig.provider === 'openrouter' ||
     modelConfig.provider === 'caila';
@@ -601,24 +585,6 @@ export function ModelSettingsModal({
     }
   };
 
-  // Fetch Groq models from API
-  const loadGroqModels = async (key: string | null) => {
-    if (!key?.trim()) {
-      setGroqModels([]); // Will use fallback via modelOptions
-      return;
-    }
-    setIsLoadingGroq(true);
-    try {
-      const data = (await invoke('get_groq_models', { apiKey: key })) as GroqModel[];
-      setGroqModels(data.map((m) => m.id));
-    } catch (err) {
-      console.error('Error loading Groq models:', err);
-      setGroqModels([]); // Will use fallback via modelOptions
-    } finally {
-      setIsLoadingGroq(false);
-    }
-  };
-
   // Fetch Caila models from API (raw-key auth, no "Bearer" prefix)
   const loadCailaModels = async (key: string | null) => {
     if (!key?.trim()) {
@@ -669,13 +635,6 @@ export function ModelSettingsModal({
     }
   }, [modelConfig.provider, apiKey]);
 
-  // Auto-fetch Groq models when provider is groq and we have an API key
-  useEffect(() => {
-    if (modelConfig.provider === 'groq' && apiKey?.trim()) {
-      loadGroqModels(apiKey);
-    }
-  }, [modelConfig.provider, apiKey]);
-
   // Auto-fetch Caila models when provider is caila and we have an API key
   useEffect(() => {
     if (modelConfig.provider === 'caila' && apiKey?.trim()) {
@@ -697,7 +656,7 @@ export function ModelSettingsModal({
     if (cachedModel && providerModels.includes(cachedModel)) {
       setModelConfig((prev: ModelConfig) => ({ ...prev, model: cachedModel }));
     }
-  }, [models, openRouterModels, builtinAiModels, openaiModels, claudeModels, groqModels, cailaModels, modelConfig.provider]);
+  }, [models, openRouterModels, builtinAiModels, openaiModels, claudeModels, cailaModels, modelConfig.provider]);
 
   const handleSave = async () => {
     // For custom-openai provider, save the custom config first
@@ -963,7 +922,6 @@ export function ModelSettingsModal({
                 <SelectItem value="caila">Caila</SelectItem>
                 <SelectItem value="claude">Claude</SelectItem>
                 <SelectItem value="custom-openai">Свой сервер (OpenAI)</SelectItem>
-                <SelectItem value="groq">Groq</SelectItem>
                 <SelectItem value="ollama">Ollama</SelectItem>
                 <SelectItem value="openai">OpenAI</SelectItem>
                 <SelectItem value="openrouter">OpenRouter</SelectItem>
@@ -1000,7 +958,6 @@ export function ModelSettingsModal({
                       {(modelConfig.provider === 'openrouter' && isLoadingOpenRouter) ||
                        (modelConfig.provider === 'openai' && isLoadingOpenAI) ||
                        (modelConfig.provider === 'claude' && isLoadingClaude) ||
-                       (modelConfig.provider === 'groq' && isLoadingGroq) ||
                        (modelConfig.provider === 'caila' && isLoadingCaila) ? (
                         <div className="py-6 text-center text-sm text-muted-foreground">
                           <RefreshCw className="mx-auto h-4 w-4 animate-spin mb-2" />

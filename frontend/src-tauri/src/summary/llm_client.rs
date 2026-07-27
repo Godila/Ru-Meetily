@@ -91,7 +91,6 @@ pub struct ClaudeChatContent {
 pub enum LLMProvider {
     OpenAI,
     Claude,
-    Groq,
     Ollama,
     OpenRouter,
     BuiltInAI,
@@ -105,7 +104,6 @@ impl LLMProvider {
         match s.to_lowercase().as_str() {
             "openai" => Ok(Self::OpenAI),
             "claude" => Ok(Self::Claude),
-            "groq" => Ok(Self::Groq),
             "ollama" => Ok(Self::Ollama),
             "openrouter" => Ok(Self::OpenRouter),
             "builtin-ai" | "local-llama" | "localllama" => Ok(Self::BuiltInAI),
@@ -178,10 +176,6 @@ pub async fn generate_summary(
     let (api_url, mut headers) = match provider {
         LLMProvider::OpenAI => (
             "https://api.openai.com/v1/chat/completions".to_string(),
-            header::HeaderMap::new(),
-        ),
-        LLMProvider::Groq => (
-            "https://api.groq.com/openai/v1/chat/completions".to_string(),
             header::HeaderMap::new(),
         ),
         LLMProvider::OpenRouter => (
@@ -380,7 +374,6 @@ fn provider_name(provider: &LLMProvider) -> &str {
     match provider {
         LLMProvider::OpenAI => "OpenAI",
         LLMProvider::Claude => "Claude",
-        LLMProvider::Groq => "Groq",
         LLMProvider::Ollama => "Ollama",
         LLMProvider::BuiltInAI => "Built-in AI",
         LLMProvider::OpenRouter => "OpenRouter",
