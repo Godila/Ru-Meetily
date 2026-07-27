@@ -103,6 +103,13 @@ pub struct Setting {
     /// `None` (NULL) = "default" → resolved at read time to ON iff a GPU is
     /// detected. `Some(0)` = user disabled GPU (force CPU). `Some(1)` = on.
     pub use_gpu: Option<i64>,
+    /// Onboarding LLM-provider decision marker.
+    /// "local" | "cloud:<provider>" | "deferred" | NULL (still in onboarding)
+    #[sqlx(rename = "onboarding_provider_choice")]
+    pub onboarding_provider_choice: Option<String>,
+    /// ISO-8601 timestamp of when the onboarding choice was recorded.
+    #[sqlx(rename = "provider_chosen_at")]
+    pub provider_chosen_at: Option<String>,
 }
 
 impl Setting {

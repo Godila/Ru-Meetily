@@ -46,6 +46,10 @@ export interface ModelConfig {
   // GPU-toggle preference for the built-in AI (llama-helper) provider.
   // Omitted from older API responses; defaults to hardware-detected at read.
   useGpu?: boolean | null;
+  // Onboarding LLM-provider decision marker mirrored from the DB.
+  // "deferred" → user skipped provider selection; the summary lazy-gate
+  // prompts them to pick one on first generation.
+  onboardingProviderChoice?: string | null;
 }
 
 interface OllamaModel {

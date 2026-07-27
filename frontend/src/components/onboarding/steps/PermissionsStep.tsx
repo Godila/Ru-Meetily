@@ -114,8 +114,9 @@ export function PermissionsStep() {
   return (
     <OnboardingContainer
       title="Предоставление разрешений"
-      description="Meetly нужен доступ к микрофону и системному звуку для записи встреч"
-      step={4}
+      description="Convoic нужен доступ к микрофону и системному звуку для записи встреч"
+      step={5}
+      totalSteps={5}
       hideProgress={true}
       showNavigation={allPermissionsGranted}
       canGoNext={allPermissionsGranted}

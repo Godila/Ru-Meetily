@@ -85,7 +85,7 @@ export function SetupOverviewStep() {
     {
       number: 2,
       type: 'summarization',
-      title: 'Скачать локальную LLM для саммари',
+      title: 'Выбрать способ генерации саммари',
     },
   ];
 
@@ -103,9 +103,9 @@ export function SetupOverviewStep() {
   return (
     <OnboardingContainer
       title="Обзор настройки"
-      description="Для работы Convoic необходимо загрузить модель распознавания речи и локальную LLM для саммари."
+      description="Convoic загрузит модель распознавания речи. Способ генерации саммари вы выберете на следующем шаге."
       step={2}
-      totalSteps={isMac ? 4 : 3}
+      totalSteps={isMac ? 5 : 4}
     >
       <div className="flex flex-col items-center space-y-10">
         {/* Hardware card (read-only) */}
@@ -190,8 +190,9 @@ export function SetupOverviewStep() {
                             </button>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs text-sm">
-                            Также в настройках можно выбрать внешние AI-провайдеры
-                            для генерации резюме: OpenAI, Claude или Ollama.
+                            На следующем шаге можно выбрать локальную модель,
+                            облачного провайдера (Caila, OpenAI, Claude, OpenRouter)
+                            или пропустить настройку и вернуться к ней позже.
                             </TooltipContent>
                         </Tooltip>
                         </TooltipProvider>

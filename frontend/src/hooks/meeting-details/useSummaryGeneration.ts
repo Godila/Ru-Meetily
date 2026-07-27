@@ -451,6 +451,23 @@ export function useSummaryGeneration({
       return;
     }
 
+    // Proactive lazy-gate: if the user finished onboarding without choosing an
+    // LLM provider (Skip branch), intercept the request before it hits the
+    // backend and prompt them to pick one. Backend "model is required" errors
+    // are still handled reactively below as defense-in-depth.
+    //
+    // The marker lives in modelConfig.onboardingProviderChoice (mirrored from
+    // the DB's onboarding_provider_choice column). "deferred" = user skipped.
+    if (modelConfig.onboardingProviderChoice === 'deferred') {
+      console.log('🚫 Summary provider not configured (deferred) — opening settings');
+      toast.info('Выберите провайдера для саммари', {
+        description: 'Откроются настройки модели. После выбора повторите генерацию.',
+        duration: 5000,
+      });
+      onOpenModelSettings?.();
+      return;
+    }
+
     // CHANGE: Fetch ALL transcripts from database, not from pagination state
     console.log('📊 Fetching all transcripts for summary generation...');
     const allTranscripts = await fetchAllTranscripts(meeting.id);

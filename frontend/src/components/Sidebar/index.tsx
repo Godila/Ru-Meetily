@@ -62,7 +62,6 @@ const Sidebar: React.FC = () => {
   const { openImportDialog } = useImportDialog();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['meetings']));
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showModelSettings, setShowModelSettings] = useState(false);
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
     provider: 'ollama',
     model: '',
@@ -431,17 +430,10 @@ const Sidebar: React.FC = () => {
     setExpandedFolders(newExpanded);
   };
 
-  // Expose setShowModelSettings to window for Rust tray to call
-  useEffect(() => {
-    (window as any).openSettings = () => {
-      setShowModelSettings(true);
-    };
-
-    // Cleanup on unmount
-    return () => {
-      delete (window as any).openSettings;
-    };
-  }, []);
+  // The Rust tray menu's window.openSettings() handler is owned by the global
+  // ProviderSetupGateContext (mounted in ClientLayout above Sidebar), which
+  // opens the model-settings dialog. Sidebar no longer registers its own
+  // handler — see ProviderSetupGateContext.useEffect for the registration.
 
   const renderCollapsedIcons = () => {
     if (!isCollapsed) return null;

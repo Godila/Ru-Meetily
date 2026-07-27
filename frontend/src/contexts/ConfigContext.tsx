@@ -241,6 +241,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                   maxTokens: customConfig.maxTokens,
                   temperature: customConfig.temperature,
                   topP: customConfig.topP,
+                  // Preserve the onboarding decision marker so the summary
+                  // lazy-gate (useSummaryGeneration) can detect "deferred".
+                  onboardingProviderChoice: data.onboardingProviderChoice ?? null,
                 }));
 
                 // Seed per-provider model cache from DB
@@ -264,6 +267,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             model: data.model || prev.model,
             whisperModel: data.whisperModel || prev.whisperModel,
             ollamaEndpoint: data.ollamaEndpoint,
+            // Preserve the onboarding decision marker so the summary
+            // lazy-gate (useSummaryGeneration) can detect "deferred".
+            onboardingProviderChoice: data.onboardingProviderChoice ?? null,
           }));
 
           // Seed per-provider model cache from DB

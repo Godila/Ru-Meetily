@@ -17,6 +17,7 @@ import { useTemplates } from '@/hooks/meeting-details/useTemplates';
 import { useCopyOperations } from '@/hooks/meeting-details/useCopyOperations';
 import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperations';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useProviderSetupGate } from '@/contexts/ProviderSetupGateContext';
 
 export default function PageContent({
   meeting,
@@ -58,7 +59,11 @@ export default function PageContent({
   const [isRecording] = useState(false);
   const [summaryResponse] = useState<SummaryResponse | null>(null);
 
-  // Ref to store the modal open function from SummaryGeneratorButtonGroup
+  // Ref to store the modal open function from SummaryGeneratorButtonGroup.
+  // Kept for backward compat with the page-local Dialog rendered by that
+  // component; the global ProviderSetupGateContext serves as a fallback when
+  // the ref is not yet registered (e.g. lazy-gate fires before the button
+  // group mounts).
   const openModelSettingsRef = useRef<(() => void) | null>(null);
 
   // Sidebar context
@@ -66,6 +71,9 @@ export default function PageContent({
 
   // Get model config from ConfigContext
   const { modelConfig, setModelConfig } = useConfig();
+
+  // Global settings-modal gate (lazy-gate host). Always mounted in ClientLayout.
+  const { openSettingsModal: openSettingsModalGate } = useProviderSetupGate();
 
   // Custom hooks
   const meetingData = useMeetingData({ meeting, summaryData, onMeetingUpdated });
@@ -77,13 +85,17 @@ export default function PageContent({
     openModelSettingsRef.current = openFn;
   };
 
-  // Callback to trigger modal open (called from error handler)
+  // Callback to trigger modal open (called from error handler / lazy gate).
+  // Prefers the page-local Dialog registered by SummaryGeneratorButtonGroup;
+  // falls back to the global ProviderSetupGateContext dialog if no local
+  // registration exists yet.
   const handleOpenModelSettings = () => {
     console.log('🔔 Opening model settings from PageContent');
     if (openModelSettingsRef.current) {
       openModelSettingsRef.current();
     } else {
-      console.warn('⚠️ Modal open function not yet registered');
+      console.log('↘️ No local modal registered, opening global gate');
+      openSettingsModalGate('lazy_gate_summary_required');
     }
   };
 
