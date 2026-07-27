@@ -8,6 +8,15 @@
 
 ### ✨ Что нового
 
+- **Новый облачный LLM-провайдер — Caila (Just AI).** Российская ML-платформа с OpenAI-совместимым адаптером `https://caila.io/api/adapters/openai`. Доступ к 100+ моделям (DeepSeek V4 Flash/Pro, Claude, Qwen, GPT и др.) через единый API-ключ.
+  - **Ключевое отличие от остальных OpenAI-compatible провайдеров:** Caila использует raw API-ключ в заголовке `Authorization` **без** префикса `Bearer`. Реализовано отдельной веткой в `generate_summary`, не влияет на другие провайдеры.
+  - **Хардкод endpoint** (не редактируется пользователем) — по решению о simplicity UX.
+  - **Живой fetch `/models`** — список моделей подгружается автоматически после ввода API-ключа (кэш 5 мин).
+  - **Кнопка «Проверить подключение»** — валидирует ключ тестовым запросом перед сохранением.
+  - **Поддержка reasoning-моделей:** `MessageContent` теперь принимает `content` | `reasoning_content` | `reasoning` (DeepSeek V4 — reasoning-модель, может не выдать `content` при малом `max_tokens`).
+  - **DB-миграция:** добавлена колонка `cailaApiKey` в таблицу `settings`.
+  - Ключ хранится в SQLite plaintext (следует существующей конвенции проекта).
+
 - **Новая LLM-модель в каталоге — RuadaptQwen3-4B (Russian-optimized).** Russian-adapted Qwen3-4B-Instruct-2507 от [RefalMachine](https://huggingface.co/RefalMachine/RuadaptQwen3-4B-Instruct) с continued pre-training на русском корпусе и расширенным токенайзером (+48K русских токенов). Заменяет legacy-вариант Gemma 3 4B в каталоге моделей саммаризации.
   - **context_size:** 65 536 (бамп с 32K — для 4-5 часовых русских встреч без чанкования)
   - **Сэмплинг:** новый пресет `ruadapt_summary()` (temp 0.3, top_p 0.9, repeat_penalty 1.05 — рекомендации авторов модели)
