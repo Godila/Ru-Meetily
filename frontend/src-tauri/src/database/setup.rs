@@ -4,34 +4,47 @@ use tauri::{AppHandle, Emitter, Manager};
 use super::manager::DatabaseManager;
 use crate::state::AppState;
 
-/// Initialize database on app startup
-/// Handles first launch detection and conditional initialization
+/// Initialize database on app startup.
+///
+/// The database is ALWAYS created synchronously here, including on first launch.
+/// This fixes a race condition where the frontend would render and invoke
+/// `api_get_*` commands (which require `AppState`) before the database had been
+/// initialized, producing "state not managed for field `state`" errors and a
+/// blank main panel.
+///
+/// Previously, on first launch the database was NOT initialized here; instead a
+/// `first-launch-detected` event was emitted and the frontend was expected to
+/// call `initialize_fresh_database` later. But nothing on the frontend actually
+/// listens for that event, so `AppState` was never registered and every command
+/// that depends on it failed.
+///
+/// We still detect first launch for logging/analytics, but no longer gate
+/// database creation on it.
 pub async fn initialize_database_on_startup(app: &AppHandle) -> Result<(), String> {
-    // Check if this is the first launch (no database exists yet)
     let is_first_launch = DatabaseManager::is_first_launch(app)
         .await
         .map_err(|e| format!("Failed to check first launch status: {}", e))?;
 
     if is_first_launch {
-        info!("First launch detected - will notify window when ready");
-
-        // Delay event emission to ensure window is ready and React listeners are registered
-        let app_handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-            app_handle
-                .emit("first-launch-detected", ())
-                .expect("Failed to emit first-launch-detected event");
-            info!("Emitted first-launch-detected after delay");
-        });
+        info!("First launch detected - initializing fresh database synchronously");
     } else {
-        // Normal flow - initialize database immediately
-        let db_manager = DatabaseManager::new_from_app_handle(app)
-            .await
-            .map_err(|e| format!("Failed to initialize database manager: {}", e))?;
+        info!("Subsequent launch detected - initializing database");
+    }
 
-        app.manage(AppState { db_manager });
-        info!("Database initialized successfully");
+    // Always create/open the database and register AppState. On first launch this
+    // creates a fresh database with migrations; on subsequent launches it opens
+    // the existing one. Either way AppState becomes available before the window
+    // finishes loading, so frontend commands that depend on it succeed.
+    let db_manager = DatabaseManager::new_from_app_handle(app)
+        .await
+        .map_err(|e| format!("Failed to initialize database manager: {}", e))?;
+
+    app.manage(AppState { db_manager });
+    info!("Database initialized successfully");
+
+    // Notify frontend (kept for backward compat / any listeners that may exist).
+    if is_first_launch {
+        let _ = app.emit("first-launch-detected", ());
     }
 
     Ok(())
