@@ -11,7 +11,12 @@ pub const STANDARD_MEETING: &str = include_str!("../../../templates/standard_mee
 
 /// Registry of all built-in templates
 ///
-/// Maps template identifiers to their embedded JSON content
+/// Maps template identifiers to their embedded JSON content.
+///
+/// `#[allow(dead_code)]`: no production caller today, but this is the public
+/// registry API and is exercised by `test_builtin_templates_valid_json` below.
+/// Removing it would drop coverage of the embedded JSON validity check.
+#[allow(dead_code)]
 pub fn get_builtin_templates() -> Vec<(&'static str, &'static str)> {
     vec![
         ("daily_standup", DAILY_STANDUP),

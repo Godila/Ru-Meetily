@@ -3,7 +3,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 // Removed unused import
 
-// Performance optimization: Conditional logging macros for hot paths
+// Performance optimization: conditional debug logging for hot paths.
+// `perf_debug!` is used in the audio pipeline (see audio/pipeline.rs); it
+// expands to `log::debug!` in debug builds and to a no-op in release builds.
+// The macro is visible crate-wide via textual macro scoping, so no re-export
+// is needed.
 #[cfg(debug_assertions)]
 macro_rules! perf_debug {
     ($($arg:tt)*) => {
@@ -15,24 +19,6 @@ macro_rules! perf_debug {
 macro_rules! perf_debug {
     ($($arg:tt)*) => {};
 }
-
-#[cfg(debug_assertions)]
-macro_rules! perf_trace {
-    ($($arg:tt)*) => {
-        log::trace!($($arg)*)
-    };
-}
-
-#[cfg(not(debug_assertions))]
-macro_rules! perf_trace {
-    ($($arg:tt)*) => {};
-}
-
-// Make these macros available to other modules
-pub(crate) use perf_debug;
-pub(crate) use perf_trace;
-
-// Re-export async logging macros for external use (removed due to macro conflicts)
 
 // Declare audio module
 pub mod analytics;

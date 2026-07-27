@@ -12,9 +12,6 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, RwLock};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 use super::models;
 
 // ============================================================================
@@ -300,6 +297,11 @@ impl SidecarManager {
 
         #[cfg(target_os = "windows")]
         {
+            // `CommandExt` is needed for `command.creation_flags(...)` below; the
+            // checker flags it as unused because the trait method resolves via
+            // autoref. Keep the import.
+            #[allow(unused_imports)]
+            use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x08000000;
             const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x00004000;
 

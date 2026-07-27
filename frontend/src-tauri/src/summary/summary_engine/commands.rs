@@ -13,6 +13,11 @@ use super::model_manager::{DownloadProgress, ModelInfo, ModelManager};
 const QWEN35_4B_RECOMMENDED_RAM_GB: u64 = 14;
 /// VRAM (GB) above which the larger model is recommended even on a machine
 /// with modest RAM, because GPU offload makes it fit comfortably.
+///
+/// `#[allow(dead_code)]`: intended for the GPU-offload recommendation branch
+/// (sibling to `QWEN35_4B_RECOMMENDED_RAM_GB`), not yet wired in. Keep until
+/// the hardware-aware recommendation path lands.
+#[allow(dead_code)]
 const QWEN35_4B_RECOMMENDED_VRAM_GB: f32 = 6.0;
 
 pub(crate) fn summary_model_priority(model_name: &str) -> u8 {

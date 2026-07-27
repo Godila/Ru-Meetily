@@ -198,6 +198,10 @@ pub struct AudioCapture {
     channels: u16,
     chunk_counter: Arc<std::sync::atomic::AtomicU64>,
     device_type: DeviceType,
+    // `#[allow(dead_code)]`: this sender is stored on the capture handle and
+    // forwarded into the audio stream in `stream.rs`; the compiler can't see
+    // the cross-module read, so it's a false positive. Do not remove.
+    #[allow(dead_code)]
     recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
     needs_resampling: bool,  // Flag if resampling is required
     // CRITICAL FIX: Persistent resampler to preserve energy across chunks
@@ -680,6 +684,11 @@ impl AudioCapture {
 pub struct AudioPipeline {
     receiver: mpsc::UnboundedReceiver<AudioChunk>,
     transcription_sender: mpsc::UnboundedSender<AudioChunk>,
+    // `#[allow(dead_code)]`: false positive — `self.state.*` is read at several
+    // points in the processing loop (is_recording, get_recording_duration,
+    // send_audio_chunk, report_error). The checker misses it under the current
+    // cfg/Clone setup. Do not remove.
+    #[allow(dead_code)]
     state: Arc<RecordingState>,
     vad_processor: ContinuousVadProcessor,
     sample_rate: u32,
