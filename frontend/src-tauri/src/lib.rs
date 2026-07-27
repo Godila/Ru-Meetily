@@ -48,6 +48,7 @@ pub mod openai;
 pub mod anthropic;
 pub mod groq;
 pub mod openrouter;
+pub mod caila;
 pub mod parakeet_engine;
 pub mod gigaam_engine;
 pub mod state;
@@ -656,6 +657,7 @@ pub fn run() {
             openai::openai::get_openai_models,
             anthropic::anthropic::get_anthropic_models,
             groq::groq::get_groq_models,
+            caila::caila::get_caila_models,
             api::api_get_meetings,
             api::api_search_transcripts,
             api::api_get_profile,
@@ -684,6 +686,7 @@ pub fn run() {
             api::api_save_custom_openai_config,
             api::api_get_custom_openai_config,
             api::api_test_custom_openai_connection,
+            api::api_test_caila_connection,
             // Summary commands
             summary::commands::api_process_transcript,
             summary::commands::api_get_summary,

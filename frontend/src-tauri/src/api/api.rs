@@ -1420,3 +1420,114 @@ pub async fn api_test_custom_openai_connection<R: Runtime>(
         }
     }
 }
+
+/// Test Caila (Just AI) connection with a provided API key.
+///
+/// Sends a minimal chat-completion request to the Caila OpenAI adapter using
+/// the raw-key Authorization header (NO "Bearer " prefix — this is Caila's key
+/// deviation from the OpenAI standard). Returns success if the API responds
+/// with a valid OpenAI-shaped `choices[0].message.content` payload.
+///
+/// Uses a known-good model ID verified against the live API so the test
+/// isolates authentication/key validity from model-permission issues.
+#[tauri::command]
+pub async fn api_test_caila_connection<R: Runtime>(
+    _app: AppHandle<R>,
+    api_key: String,
+) -> Result<serde_json::Value, String> {
+    log_info!("api_test_caila_connection called");
+
+    if api_key.trim().is_empty() {
+        return Err("API key is required to test the Caila connection".to_string());
+    }
+
+    // Known-good model ID verified against the live Caila API. Using a fixed
+    // model keeps the test focused on auth/key validity rather than model perms.
+    const TEST_MODEL: &str = "just-ai/deepseek-deepseek/deepseek/deepseek-v4-flash";
+    const CAILA_CHAT_URL: &str = "https://caila.io/api/adapters/openai/chat/completions";
+
+    let test_request = serde_json::json!({
+        "model": TEST_MODEL,
+        "messages": [
+            { "role": "user", "content": "Hi" }
+        ],
+        // Use a larger budget than other providers' tests: some Caila models
+        // (e.g. DeepSeek V4) are reasoning models that spend tokens on a
+        // "reasoning" field before producing the final "content". A budget of
+        // 50 is enough to surface at least one of content / reasoning_content.
+        "max_tokens": 50
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    // Caila expects the raw API key in Authorization, WITHOUT "Bearer ".
+    let response = client
+        .post(CAILA_CHAT_URL)
+        .header("Content-Type", "application/json")
+        .header("Authorization", api_key.trim())
+        .json(&test_request)
+        .send()
+        .await;
+
+    match response {
+        Ok(response) => {
+            let status = response.status();
+            let response_text = response.text().await.unwrap_or_default();
+
+            if status.is_success() {
+                match serde_json::from_str::<serde_json::Value>(&response_text) {
+                    Ok(json) => {
+                        // Validate OpenAI-shaped response. Accept any of the
+                        // content-like fields Caila models may emit: "content"
+                        // (standard OpenAI), "reasoning_content" (some chat
+                        // models), or "reasoning" (DeepSeek V4 reasoning field).
+                        let has_message = json
+                            .get("choices")
+                            .and_then(|c| c.as_array())
+                            .and_then(|a| a.get(0))
+                            .and_then(|c| c.get("message"))
+                            .and_then(|m| {
+                                m.get("content")
+                                    .or_else(|| m.get("reasoning_content"))
+                                    .or_else(|| m.get("reasoning"))
+                            })
+                            .is_some();
+
+                        if has_message {
+                            log_info!("✅ Caila connection test successful");
+                            return Ok(serde_json::json!({
+                                "status": "success",
+                                "message": "Connection successful and response validated",
+                                "http_status": status.as_u16()
+                            }));
+                        }
+
+                        log_warn!("⚠️ Caila returned 200 but response is not OpenAI-shaped: {}", response_text);
+                        Err("Caila is reachable but the response doesn't match the expected OpenAI format.".to_string())
+                    }
+                    Err(e) => {
+                        log_warn!("⚠️ Caila returned 200 but invalid JSON: {}", e);
+                        Err(format!("Caila is reachable but returned invalid JSON: {}", e))
+                    }
+                }
+            } else {
+                // Surface Caila's structured error messages (e.g. token/model restrictions)
+                log_warn!("⚠️ Caila connection test failed with status {}: {}", status, response_text);
+                Err(format!("Connection failed with status {}: {}", status, response_text))
+            }
+        }
+        Err(e) => {
+            log_error!("❌ Caila connection test failed: {}", e);
+            if e.is_timeout() {
+                Err("Connection to Caila timed out. Check your network.".to_string())
+            } else if e.is_connect() {
+                Err("Could not connect to Caila. Check your network.".to_string())
+            } else {
+                Err(format!("Connection failed: {}", e))
+            }
+        }
+    }
+}

@@ -38,9 +38,32 @@ pub struct Choice {
     pub message: MessageContent,
 }
 
+/// Response message body. `content` is the standard OpenAI field, but some
+/// providers (notably Caila's DeepSeek V4 reasoning models) emit only
+/// `reasoning` / `reasoning_content` when the token budget is consumed by
+/// chain-of-thought. We treat all three as valid sources of the final text,
+/// preferring `content` when present.
 #[derive(Deserialize, Debug)]
 pub struct MessageContent {
-    pub content: String,
+    #[serde(default)]
+    pub content: Option<String>,
+    #[serde(default)]
+    pub reasoning_content: Option<String>,
+    #[serde(default)]
+    pub reasoning: Option<String>,
+}
+
+impl MessageContent {
+    /// Return the primary text payload, preferring `content` and falling back
+    /// to the reasoning-style fields. Returns an empty string only if all are
+    /// absent.
+    pub fn text(&self) -> String {
+        self.content
+            .clone()
+            .or_else(|| self.reasoning_content.clone())
+            .or_else(|| self.reasoning.clone())
+            .unwrap_or_default()
+    }
 }
 
 // Claude-specific request structure
@@ -73,6 +96,7 @@ pub enum LLMProvider {
     OpenRouter,
     BuiltInAI,
     CustomOpenAI,
+    Caila,
 }
 
 impl LLMProvider {
@@ -86,6 +110,7 @@ impl LLMProvider {
             "openrouter" => Ok(Self::OpenRouter),
             "builtin-ai" | "local-llama" | "localllama" => Ok(Self::BuiltInAI),
             "custom-openai" => Ok(Self::CustomOpenAI),
+            "caila" => Ok(Self::Caila),
             _ => Err(format!("Unsupported LLM provider: {}", s)),
         }
     }
@@ -163,6 +188,12 @@ pub async fn generate_summary(
             "https://openrouter.ai/api/v1/chat/completions".to_string(),
             header::HeaderMap::new(),
         ),
+        LLMProvider::Caila => (
+            // Caila (Just AI) OpenAI-compatible adapter. Auth is handled below:
+            // Caila uses a raw key WITHOUT the "Bearer " prefix.
+            "https://caila.io/api/adapters/openai/chat/completions".to_string(),
+            header::HeaderMap::new(),
+        ),
         LLMProvider::Ollama => {
             let host = ollama_endpoint
                 .map(|s| s.to_string())
@@ -202,11 +233,19 @@ pub async fn generate_summary(
         }
     };
 
-    // Add authorization header for non-Claude providers
+    // Add authorization header.
+    // - Claude uses x-api-key (handled in its match arm above).
+    // - Caila uses the raw API key WITHOUT a "Bearer " prefix.
+    // - All other OpenAI-compatible providers use the standard "Bearer <key>".
     if provider != &LLMProvider::Claude {
+        let auth_value = if provider == &LLMProvider::Caila {
+            api_key.to_string()
+        } else {
+            format!("Bearer {}", api_key)
+        };
         headers.insert(
             header::AUTHORIZATION,
-            format!("Bearer {}", api_key)
+            auth_value
                 .parse()
                 .map_err(|_| "Invalid authorization header".to_string())?,
         );
@@ -328,9 +367,11 @@ pub async fn generate_summary(
             .get(0)
             .ok_or("No content in LLM response")?
             .message
-            .content
-            .trim();
-        Ok(content.to_string())
+            .text();
+        if content.trim().is_empty() {
+            return Err("LLM returned an empty response".to_string());
+        }
+        Ok(content.trim().to_string())
     }
 }
 
@@ -344,5 +385,6 @@ fn provider_name(provider: &LLMProvider) -> &str {
         LLMProvider::BuiltInAI => "Built-in AI",
         LLMProvider::OpenRouter => "OpenRouter",
         LLMProvider::CustomOpenAI => "Custom OpenAI",
+        LLMProvider::Caila => "Caila",
     }
 }

@@ -31,7 +31,7 @@ import { cn, isOllamaNotInstalledError } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export interface ModelConfig {
-  provider: 'ollama' | 'groq' | 'claude' | 'openai' | 'openrouter' | 'builtin-ai' | 'custom-openai';
+  provider: 'ollama' | 'groq' | 'claude' | 'openai' | 'openrouter' | 'builtin-ai' | 'custom-openai' | 'caila';
   model: string;
   whisperModel: string;
   apiKey?: string | null;
@@ -77,6 +77,11 @@ interface GroqModel {
   owned_by?: string;
 }
 
+interface CailaModel {
+  id: string;
+  owned_by?: string;
+}
+
 // Fallback models for when API fetch fails or no API key provided
 const OPENAI_FALLBACK_MODELS = [
   'gpt-4o',
@@ -102,6 +107,13 @@ const GROQ_FALLBACK_MODELS = [
   'llama-3.1-70b-versatile',
   'mixtral-8x7b-32768',
   'gemma2-9b-it',
+];
+
+// Caila fallback models — known-good IDs verified against the live API.
+// Used when no API key is provided or the /models fetch fails.
+const CAILA_FALLBACK_MODELS = [
+  'just-ai/deepseek-deepseek/deepseek/deepseek-v4-flash',
+  'just-ai/deepseek-deepseek/deepseek/deepseek-v4-pro',
 ];
 
 interface ModelSettingsModalProps {
@@ -161,13 +173,17 @@ export function ModelSettingsModal({
   // Combobox state
   const [modelComboboxOpen, setModelComboboxOpen] = useState<boolean>(false);
 
-  // Dynamic model fetching state for OpenAI, Claude, and Groq
+  // Dynamic model fetching state for OpenAI, Claude, Groq, and Caila
   const [openaiModels, setOpenaiModels] = useState<string[]>([]);
   const [claudeModels, setClaudeModels] = useState<string[]>([]);
   const [groqModels, setGroqModels] = useState<string[]>([]);
+  const [cailaModels, setCailaModels] = useState<string[]>([]);
   const [isLoadingOpenAI, setIsLoadingOpenAI] = useState<boolean>(false);
   const [isLoadingClaude, setIsLoadingClaude] = useState<boolean>(false);
   const [isLoadingGroq, setIsLoadingGroq] = useState<boolean>(false);
+  const [isLoadingCaila, setIsLoadingCaila] = useState<boolean>(false);
+  const [isTestingCailaConnection, setIsTestingCailaConnection] = useState<boolean>(false);
+  const [cailaConnectionMessage, setCailaConnectionMessage] = useState<string | null>(null);
 
   // Use global download context instead of local state
   const { isDownloading, getProgress, downloadingModels } = useOllamaDownload();
@@ -234,13 +250,15 @@ export function ModelSettingsModal({
     openrouter: openRouterModels.map((m) => m.id),
     'builtin-ai': builtinAiModels.map((m) => m.name),
     'custom-openai': customOpenAIModel ? [customOpenAIModel] : [], // User specifies model manually
+    caila: cailaModels.length > 0 ? cailaModels : CAILA_FALLBACK_MODELS,
   };
 
   const requiresApiKey =
     modelConfig.provider === 'claude' ||
     modelConfig.provider === 'groq' ||
     modelConfig.provider === 'openai' ||
-    modelConfig.provider === 'openrouter';
+    modelConfig.provider === 'openrouter' ||
+    modelConfig.provider === 'caila';
 
   // Check if Ollama endpoint has changed but models haven't been fetched yet
   const ollamaEndpointChanged = modelConfig.provider === 'ollama' &&
@@ -580,6 +598,42 @@ export function ModelSettingsModal({
     }
   };
 
+  // Fetch Caila models from API (raw-key auth, no "Bearer" prefix)
+  const loadCailaModels = async (key: string | null) => {
+    if (!key?.trim()) {
+      setCailaModels([]); // Will use fallback via modelOptions
+      return;
+    }
+    setIsLoadingCaila(true);
+    try {
+      const data = (await invoke('get_caila_models', { apiKey: key })) as CailaModel[];
+      setCailaModels(data.map((m) => m.id));
+    } catch (err) {
+      console.error('Error loading Caila models:', err);
+      setCailaModels([]); // Will use fallback via modelOptions
+    } finally {
+      setIsLoadingCaila(false);
+    }
+  };
+
+  // Test Caila connection with the current API key
+  const testCailaConnection = async () => {
+    if (!apiKey?.trim()) return;
+    setIsTestingCailaConnection(true);
+    setCailaConnectionMessage(null);
+    try {
+      const result = (await invoke('api_test_caila_connection', {
+        apiKey: apiKey.trim(),
+      })) as { status: string; message?: string };
+      setCailaConnectionMessage(result.message || 'Подключение успешно');
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : (err as Error)?.message || 'Ошибка подключения';
+      setCailaConnectionMessage(`Ошибка: ${msg}`);
+    } finally {
+      setIsTestingCailaConnection(false);
+    }
+  };
+
   // Auto-fetch OpenAI models when provider is openai and we have an API key
   useEffect(() => {
     if (modelConfig.provider === 'openai' && apiKey?.trim()) {
@@ -601,6 +655,13 @@ export function ModelSettingsModal({
     }
   }, [modelConfig.provider, apiKey]);
 
+  // Auto-fetch Caila models when provider is caila and we have an API key
+  useEffect(() => {
+    if (modelConfig.provider === 'caila' && apiKey?.trim()) {
+      loadCailaModels(apiKey);
+    }
+  }, [modelConfig.provider, apiKey]);
+
   // Restore cached model when async model lists become available
   useEffect(() => {
     const providerModels = modelOptions[modelConfig.provider];
@@ -615,7 +676,7 @@ export function ModelSettingsModal({
     if (cachedModel && providerModels.includes(cachedModel)) {
       setModelConfig((prev: ModelConfig) => ({ ...prev, model: cachedModel }));
     }
-  }, [models, openRouterModels, builtinAiModels, openaiModels, claudeModels, groqModels, modelConfig.provider]);
+  }, [models, openRouterModels, builtinAiModels, openaiModels, claudeModels, groqModels, cailaModels, modelConfig.provider]);
 
   const handleSave = async () => {
     // For custom-openai provider, save the custom config first
@@ -878,6 +939,7 @@ export function ModelSettingsModal({
               </SelectTrigger>
               <SelectContent className="max-h-64 overflow-y-auto">
                 <SelectItem value="builtin-ai">Встроенный ИИ (офлайн, без API)</SelectItem>
+                <SelectItem value="caila">Caila</SelectItem>
                 <SelectItem value="claude">Claude</SelectItem>
                 <SelectItem value="custom-openai">Свой сервер (OpenAI)</SelectItem>
                 <SelectItem value="groq">Groq</SelectItem>
@@ -909,7 +971,8 @@ export function ModelSettingsModal({
                       {(modelConfig.provider === 'openrouter' && isLoadingOpenRouter) ||
                        (modelConfig.provider === 'openai' && isLoadingOpenAI) ||
                        (modelConfig.provider === 'claude' && isLoadingClaude) ||
-                       (modelConfig.provider === 'groq' && isLoadingGroq) ? (
+                       (modelConfig.provider === 'groq' && isLoadingGroq) ||
+                       (modelConfig.provider === 'caila' && isLoadingCaila) ? (
                         <div className="py-6 text-center text-sm text-muted-foreground">
                           <RefreshCw className="mx-auto h-4 w-4 animate-spin mb-2" />
                           Загрузка моделей...
@@ -1070,6 +1133,51 @@ export function ModelSettingsModal({
                 </>
               )}
             </Button>
+          </div>
+        )}
+
+        {/* Caila Configuration Section — endpoint is hardcoded, only API key + model picker */}
+        {modelConfig.provider === 'caila' && (
+          <div className="space-y-4 border-t pt-4">
+            <div>
+              <Label>Endpoint</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Caila OpenAI adapter: <code>https://caila.io/api/adapters/openai</code>
+              </p>
+            </div>
+
+            {/* Test Connection Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={testCailaConnection}
+              disabled={isTestingCailaConnection || !apiKey?.trim()}
+              className="w-full"
+            >
+              {isTestingCailaConnection ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Проверка подключения...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Проверить подключение
+                </>
+              )}
+            </Button>
+
+            {cailaConnectionMessage && (
+              <p className={`text-xs ${cailaConnectionMessage.startsWith('Ошибка') ? 'text-red-500' : 'text-green-600'}`}>
+                {cailaConnectionMessage}
+              </p>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Получите API-ключ в личном кабинете <a href="https://caila.io" target="_blank" rel="noopener noreferrer" className="underline">caila.io</a>.
+              Модели загружаются автоматически после ввода ключа.
+            </p>
           </div>
         )}
 

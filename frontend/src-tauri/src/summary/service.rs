@@ -382,7 +382,7 @@ impl SummaryService {
                 }
             }
         } else {
-            // Cloud providers (OpenAI, Claude, Groq, CustomOpenAI) handle large contexts automatically
+            // Cloud providers (OpenAI, Claude, Groq, OpenRouter, Caila, CustomOpenAI) handle large contexts automatically
             100000  // Effectively unlimited for single-pass processing
         };
 
