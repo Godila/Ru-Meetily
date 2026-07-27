@@ -46,6 +46,21 @@ pnpm run tauri:dev:vulkan   # AMD/Intel Vulkan
 pnpm run tauri:dev:cpu      # CPU-only (no GPU)
 ```
 
+> **⚠️ Before `pnpm run tauri:dev` — always clear the Next.js cache.**
+> Next.js 14.2.x dev mode produces a stale `.next/` bundle after edits to `.tsx`/`.ts`
+> files or branch switches, causing `ChunkLoadError: Loading chunk app/layout failed`
+> in the Tauri WebView. Symptoms: white window, "main screen shows but buttons don't
+> work", a red Next.js error overlay. The Rust build itself succeeds (`cargo Finished`,
+> `convoic.exe` starts) — the failure is purely frontend bundle desync.
+>
+> **Fix (run before every `tauri:dev` after edits):**
+> ```bash
+> cd frontend
+> rm -rf .next out src-tauri/.next
+> pnpm run tauri:dev
+> ```
+> First launch after clearing takes ~10–15s longer (full module graph rebuild).
+
 ### Legacy Backend Archive
 
 **Location**: `/backend`
