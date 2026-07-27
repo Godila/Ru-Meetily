@@ -428,9 +428,15 @@ RUST_LOG=app_lib::audio=debug pnpm run tauri:dev
 - **Naming**: Audio devices use "microphone" and "system" consistently (not "input"/"output")
 - **Git Branches**:
   - `main`: Stable releases
-  - `fix/*`: Bug fixes
-  - `enhance/*`: Feature enhancements
-  - Current: `fix/audio-mixing` (working on audio pipeline improvements)
+  - `feat/*`: Feature development (e.g. `feat/onboarding-optional-llm`)
+  - `fix/*`: Bug fixes (e.g. `fix/first-launch-db-init`)
+  - Merge with `--no-ff` to preserve feature-branch history
+- **Releases (ВАЖНО — обязательно спрашивать версию)**:
+  - Перед любым релизом — созданием git tag, поднятием version в `tauri.conf.json` + `package.json` + `Cargo.toml`, запуском `pnpm tauri:build`, публикацией GitHub Release — **ОБЯЗАТЕЛЬНО спросить пользователя** какую версию ставить (patch / minor / major или конкретный номер). Не выбирать версию автоматически, даже если SemVer-логика подсказывает minor для новой feature. Пользователь сам решает номер.
+  - Команда для бандла: `pnpm tauri:build` (автоопределение GPU через `scripts/tauri-auto.js`)
+  - Установщики появляются в `target/release/bundle/{msi,nsis}/`
+  - GitHub Release: токен берётся из git credential helper (`git credential fill`), НЕ логируется. Команда `gh release create <tag> <assets...>` с `--notes-file -` через stdin heredoc.
+  - Известный нюанс: `createUpdaterArtifacts: true` в tauri.conf.json требует `TAURI_SIGNING_PRIVATE_KEY` для подписи updater-манифеста. Без неё `pnpm tauri:build` завершается с exit 1 уже ПОСЛЕ создания установщиков — это нормально, бинарники готовы.
 
 ## MCP Tooling Rules (MANDATORY — read every session)
 
