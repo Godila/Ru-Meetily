@@ -46,17 +46,36 @@ pnpm run tauri:dev:vulkan   # AMD/Intel Vulkan
 pnpm run tauri:dev:cpu      # CPU-only (no GPU)
 ```
 
-> **⚠️ Before `pnpm run tauri:dev` — always clear the Next.js cache.**
-> Next.js 14.2.x dev mode produces a stale `.next/` bundle after edits to `.tsx`/`.ts`
-> files or branch switches, causing `ChunkLoadError: Loading chunk app/layout failed`
-> in the Tauri WebView. Symptoms: white window, "main screen shows but buttons don't
-> work", a red Next.js error overlay. The Rust build itself succeeds (`cargo Finished`,
-> `convoic.exe` starts) — the failure is purely frontend bundle desync.
+> **⚠️ Before `pnpm run tauri:dev` — always clear BOTH caches.**
+>
+> Two independent caches must be cleared, or the Tauri WebView will keep serving a
+> stale/ broken bundle:
+>
+> 1. **Next.js `.next/` build cache** — stale after edits to `.tsx`/`.ts` files or
+>    branch switches. Causes `ChunkLoadError: Loading chunk app/layout failed`.
+> 2. **WebView2 HTTP/Service Worker cache** at
+>    `%LOCALAPPDATA%\com.convoic.app\EBWebView\Default\` — Edge WebView2 aggressively
+>    caches loaded JS bundles by URL and ignores an updated file on disk. Causes
+>    `Uncaught SyntaxError: Invalid or unexpected token` in `layout.js:NNN` even
+>    though `node --check` passes on the same file.
+>
+> Symptoms of a stale bundle: white window, "main screen shows but buttons don't
+> work", a red Next.js error overlay, `ChunkLoadError`, or `SyntaxError` pointing
+> at a `.js` line. The Rust build itself succeeds (`cargo Finished`, `convoic.exe`
+> starts) — the failure is purely frontend bundle desync.
 >
 > **Fix (run before every `tauri:dev` after edits):**
 > ```bash
+> # 1) Make sure the app is fully closed first (Tauri holds file locks)
+> # 2) Clear the Next.js build cache
 > cd frontend
 > rm -rf .next out src-tauri/.next
+> # 3) Clear the WebView2 cache (Windows)
+> rm -rf "$LOCALAPPDATA/com.convoic.app/EBWebView/Default/Cache" \
+>        "$LOCALAPPDATA/com.convoic.app/EBWebView/Default/Code Cache" \
+>        "$LOCALAPPDATA/com.convoic.app/EBWebView/Default/Service Worker" \
+>        "$LOCALAPPDATA/com.convoic.app/EBWebView/Default/GPUCache"
+> # 4) Run
 > pnpm run tauri:dev
 > ```
 > First launch after clearing takes ~10–15s longer (full module graph rebuild).
