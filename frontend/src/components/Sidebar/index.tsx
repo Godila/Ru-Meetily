@@ -62,7 +62,6 @@ const Sidebar: React.FC = () => {
   const { openImportDialog } = useImportDialog();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['meetings']));
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showModelSettings, setShowModelSettings] = useState(false);
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
     provider: 'ollama',
     model: '',
@@ -431,17 +430,26 @@ const Sidebar: React.FC = () => {
     setExpandedFolders(newExpanded);
   };
 
-  // Expose setShowModelSettings to window for Rust tray to call
+  // The Rust tray menu calls window.openSettings(). The actual host of that
+  // dialog is now the global ProviderSetupGateContext (mounted in ClientLayout),
+  // which re-publishes window.openSettings itself — so Sidebar no longer needs
+  // its own registration. The tray-→-navigation case (jumping to /settings) is
+  // handled by the route change below.
+  // Kept as a no-op for backward compat in case older Rust builds still emit
+  // the event before the global provider is mounted.
   useEffect(() => {
-    (window as any).openSettings = () => {
-      setShowModelSettings(true);
-    };
-
-    // Cleanup on unmount
+    if (!(window as any).openSettings) {
+      (window as any).openSettings = () => {
+        router.push('/settings');
+      };
+    }
     return () => {
-      delete (window as any).openSettings;
+      // Only delete if we own it; the global provider may have set its own.
+      if ((window as any).openSettingsTraySidebar === true) {
+        delete (window as any).openSettings;
+      }
     };
-  }, []);
+  }, [router]);
 
   const renderCollapsedIcons = () => {
     if (!isCollapsed) return null;

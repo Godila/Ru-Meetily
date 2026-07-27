@@ -25,6 +25,8 @@ export interface ModelConfig {
   maxTokens?: number | null;
   temperature?: number | null;
   topP?: number | null;
+  // Onboarding LLM-provider decision marker mirrored from the DB.
+  onboardingProviderChoice?: string | null;
 }
 
 export interface CustomOpenAIConfig {

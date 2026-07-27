@@ -5,6 +5,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { PermissionStatus, OnboardingPermissions } from '@/types/onboarding';
 import { resolveOnboardingSummaryModelStatus } from '@/lib/onboarding-summary-model';
+import {
+  type SummaryProviderDecision,
+  toBackendPayload,
+  decisionFromStatusMarker,
+} from '@/types/provider-decision';
 
 // Onboarding downloads the Russian GigaAM model as the default transcription
 // engine in this build (Whisper is stubbed out). GigaAM-v3 RNN-T int8 (~227 MB),
@@ -19,6 +24,7 @@ interface OnboardingStatus {
     parakeet: string;
     summary: string;
     selected_summary_model?: string;
+    summary_provider_choice?: string;
   };
   last_updated: string;
 }
@@ -49,6 +55,8 @@ interface OnboardingContextType {
   recommendedSummaryModel: string;
   databaseExists: boolean;
   isBackgroundDownloading: boolean;
+  // LLM-provider decision (Local | Cloud | Skip). null until the user picks.
+  providerDecision: SummaryProviderDecision | null;
   // Permissions
   permissions: OnboardingPermissions;
   permissionsSkipped: boolean;
@@ -61,6 +69,7 @@ interface OnboardingContextType {
   setSummaryModelDownloaded: (value: boolean) => void;
   setSelectedSummaryModel: (value: string) => void;
   setDatabaseExists: (value: boolean) => void;
+  setProviderDecision: (value: SummaryProviderDecision | null) => void;
   setPermissionStatus: (permission: keyof OnboardingPermissions, status: PermissionStatus) => void;
   setPermissionsSkipped: (skipped: boolean) => void;
   completeOnboarding: () => Promise<void>;
@@ -99,6 +108,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [recommendedSummaryModel, setRecommendedSummaryModel] = useState<string>('');
   const [databaseExists, setDatabaseExists] = useState(false);
   const [isBackgroundDownloading, setIsBackgroundDownloading] = useState(false);
+  // The LLM-provider decision. Persists across reloads via saveOnboardingStatus
+  // and is restored in verifyModelStatus / loadOnboardingStatus.
+  const [providerDecision, setProviderDecision] = useState<SummaryProviderDecision | null>(null);
 
   // Permissions state
   const [permissions, setPermissions] = useState<OnboardingPermissions>({
@@ -349,6 +361,16 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           if (status.model_status.selected_summary_model) {
             setSelectedSummaryModel(status.model_status.selected_summary_model);
           }
+          // Restore the onboarding decision marker even on completed sessions,
+          // so downstream consumers (e.g. lazy gate on summary generation) know
+          // whether the user deferred provider selection.
+          const restored = decisionFromStatusMarker(
+            status.model_status.summary_provider_choice,
+            status.model_status.selected_summary_model || ''
+          );
+          if (restored) {
+            setProviderDecision(restored);
+          }
           console.log('[OnboardingContext] Restored completed onboarding status without model verification');
           return;
         }
@@ -381,6 +403,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     let parakeetDownloaded = false;
     let summaryModelDownloaded = false;
     let selectedSummaryModel = '';
+    let restoredDecision: SummaryProviderDecision | null = null;
 
     // Verify Parakeet model exists on disk
     try {
@@ -415,14 +438,26 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       summaryModelDownloaded = false;
     }
 
+    // Restore the LLM-provider decision from the saved marker. For a "cloud"
+    // decision we don't re-validate the API key here — the lazy gate or the
+    // post-onboarding Settings tab handles invalid keys.
+    const marker = savedStatus.model_status.summary_provider_choice;
+    restoredDecision = decisionFromStatusMarker(marker, selectedSummaryModel);
+    if (restoredDecision) {
+      setProviderDecision(restoredDecision);
+      console.log('[OnboardingContext] Restored provider decision:', restoredDecision.kind);
+    }
+
     // Determine the correct step based on verified status
-    // New simplified flow: Step 1: Welcome, Step 2: Setup Overview, Step 3: Download Progress, Step 4: Permissions (macOS)
+    // Flow: 1 Welcome, 2 SetupOverview, 3 ProviderChoice, 4 DownloadProgress,
+    // 5 Permissions (macOS).
     let currentStep = savedStatus.current_step;
     let completed = savedStatus.completed;
 
-    // Clamp step to new max (4)
-    if (currentStep > 4) {
-      currentStep = 3; // Go to download progress step
+    // Clamp step to new max (5). Old 4-step onboarding with current_step <= 4
+    // stays valid; only impossible values fall back to the download step.
+    if (currentStep > 5) {
+      currentStep = 4;
     }
 
     // Trust the completed status - don't revert based on model downloads
@@ -433,6 +468,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       parakeetDownloaded,
       summaryModelDownloaded,
       selectedSummaryModel,
+      providerDecision: restoredDecision,
     };
   };
 
@@ -455,6 +491,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
             parakeet: parakeetDownloaded ? 'downloaded' : 'not_downloaded',
             summary: summaryModelDownloaded ? 'downloaded' : 'not_downloaded',
             selected_summary_model: selectedSummaryModel || undefined,
+            // Persist the decision marker so a mid-onboarding restart restores
+            // the chosen branch on the ProviderChoice/DownloadProgress steps.
+            summary_provider_choice: providerDecision
+              ? providerDecision.kind === 'local'
+                ? 'local'
+                : providerDecision.kind === 'cloud'
+                ? `cloud:${providerDecision.provider}`
+                : 'deferred'
+              : undefined,
           },
           last_updated: new Date().toISOString(),
         },
@@ -475,27 +520,38 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         saveTimeoutRef.current = undefined;
       }
 
-      let modelToSave = selectedSummaryModel;
-      if (!modelToSave) {
-        modelToSave = await invoke<string>('builtin_ai_get_recommended_model');
-        setSelectedSummaryModel(modelToSave);
+      // Resolve the LLM-provider decision. If the user somehow reaches this
+      // point without picking (e.g. legacy flow), fall back to a local model —
+      // this preserves the previous behaviour for existing users.
+      let decision = providerDecision;
+      if (!decision) {
+        const fallbackModel = selectedSummaryModel
+          || await invoke<string>('builtin_ai_get_recommended_model');
+        setSelectedSummaryModel(fallbackModel);
+        decision = { kind: 'local', model: fallbackModel };
+        setProviderDecision(decision);
       }
 
-      const selectedModelReady = await invoke<boolean>('builtin_ai_is_model_ready', {
-        modelName: modelToSave,
-        refresh: true,
-      });
-      setSummaryModelDownloaded(selectedModelReady);
-      if (!selectedModelReady) {
-        requestSummaryModelDownload(modelToSave);
+      // Kick off the local model download ONLY for the local branch. Cloud and
+      // deferred branches don't need a GGUF file — the former uses an API key
+      // and the latter defers provider selection entirely.
+      if (decision.kind === 'local') {
+        const selectedModelReady = await invoke<boolean>('builtin_ai_is_model_ready', {
+          modelName: decision.model,
+          refresh: true,
+        });
+        setSummaryModelDownloaded(selectedModelReady);
+        if (!selectedModelReady) {
+          requestSummaryModelDownload(decision.model);
+        }
       }
 
-      // Onboarding always uses builtin-ai with selected model
+      // Dispatch to the Rust command, which branches on the tagged union.
       await invoke('complete_onboarding', {
-        model: modelToSave,
+        choice: toBackendPayload(decision),
       });
       setCompleted(true);
-      console.log('[OnboardingContext] Onboarding completed with model:', modelToSave);
+      console.log('[OnboardingContext] Onboarding completed with decision:', decision.kind);
 
       // Reset the flag so subsequent state updates can be saved
       isCompletingRef.current = false;
@@ -585,14 +641,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const goToStep = useCallback((step: number) => {
-    setCurrentStep(Math.max(1, Math.min(step, 4)));
+    setCurrentStep(Math.max(1, Math.min(step, 5)));
   }, []);
 
   const goNext = useCallback(() => {
     setCurrentStep((prev: number) => {
       const next = prev + 1;
-      // Don't go past step 4
-      return Math.min(next, 4);
+      // Don't go past step 5 (Permissions on macOS).
+      return Math.min(next, 5);
     });
   }, []);
 
@@ -618,6 +674,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         recommendedSummaryModel,
         databaseExists,
         isBackgroundDownloading,
+        providerDecision,
         permissions,
         permissionsSkipped,
         goToStep,
@@ -627,6 +684,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         setSummaryModelDownloaded,
         setSelectedSummaryModel,
         setDatabaseExists,
+        setProviderDecision,
         setPermissionStatus,
         setPermissionsSkipped,
         completeOnboarding,

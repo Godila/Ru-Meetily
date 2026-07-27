@@ -21,6 +21,7 @@ import { UpdateCheckProvider } from '@/components/UpdateCheckProvider'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
+import { ProviderSetupGateProvider } from '@/contexts/ProviderSetupGateContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
 // Module-level component — stable reference across ClientLayout re-renders.
@@ -206,6 +207,7 @@ export default function ClientLayout({
           <TranscriptProvider>
             <ConfigProvider>
               <OllamaDownloadProvider>
+                <ProviderSetupGateProvider>
                 <OnboardingProvider>
                   <UpdateCheckProvider>
                     <SidebarProvider>
@@ -237,6 +239,7 @@ export default function ClientLayout({
                     </SidebarProvider>
                   </UpdateCheckProvider>
                 </OnboardingProvider>
+                </ProviderSetupGateProvider>
 
               </OllamaDownloadProvider>
             </ConfigProvider>

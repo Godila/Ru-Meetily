@@ -80,6 +80,11 @@ pub struct ModelConfig {
     /// JSON when None so old frontends that don't know the field keep working.
     #[serde(rename = "useGpu", skip_serializing_if = "Option::is_none")]
     pub use_gpu: Option<bool>,
+    /// Onboarding LLM-provider decision marker.
+    /// "local" | "cloud:<provider>" | "deferred" | None (still in onboarding).
+    /// The frontend uses "deferred" to trigger the lazy summary gate.
+    #[serde(rename = "onboardingProviderChoice", skip_serializing_if = "Option::is_none")]
+    pub onboarding_provider_choice: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -501,6 +506,7 @@ pub async fn api_get_model_config<R: Runtime>(
                         api_key,
                         ollama_endpoint: config.ollama_endpoint,
                         use_gpu,
+                        onboarding_provider_choice: config.onboarding_provider_choice,
                     }))
                 }
                 Err(e) => {

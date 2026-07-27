@@ -33,6 +33,7 @@ export function DownloadProgressStep() {
     setSummaryModelDownloaded,
     startBackgroundDownloads,
     completeOnboarding,
+    providerDecision,
   } = useOnboarding();
 
   const [isMac, setIsMac] = useState(false);
@@ -184,14 +185,17 @@ export function DownloadProgressStep() {
     });
   }, []);
 
-  // Start the selected summary model only after the backend recommendation is known.
+  // Start the selected summary model only after the backend recommendation is
+  // known AND the user picked the Local branch. Cloud/Skip never download a
+  // GGUF — they either use an API key or defer provider selection entirely.
   useEffect(() => {
     if (summaryDownloadStartedRef.current) return;
     if (!selectedSummaryModel) return;
+    if (providerDecision?.kind !== 'local') return;
     summaryDownloadStartedRef.current = true;
 
     startSummaryDownload();
-  }, [selectedSummaryModel]);
+  }, [selectedSummaryModel, providerDecision]);
 
   // Listen to Parakeet download progress
   useEffect(() => {
@@ -352,9 +356,12 @@ export function DownloadProgressStep() {
       console.warn('[DownloadProgressStep] Failed to verify model:', error);
     }
 
-    // Check if downloads are complete for toast notification
-    const downloadsComplete = parakeetState.status === 'completed' &&
-      summaryState.status === 'completed';
+    // Check if downloads are complete for toast notification. For non-local
+    // branches (cloud/skip) there is no summary model to wait for — only the
+    // transcription model matters.
+    const downloadsComplete =
+      parakeetState.status === 'completed' &&
+      (providerDecision?.kind !== 'local' || summaryState.status === 'completed');
 
     // Show toast if downloads still in progress
     if (!downloadsComplete) {
@@ -474,9 +481,13 @@ export function DownloadProgressStep() {
   return (
     <OnboardingContainer
       title="Подготовка к работе"
-      description="После загрузки модели распознавания речи можно начать пользоваться Meetly."
-      step={3}
-      totalSteps={isMac ? 4 : 3}
+      description={
+        providerDecision?.kind === 'local'
+          ? 'Загружаем модель распознавания речи и локальную LLM для саммари.'
+          : 'Загружаем модель распознавания речи. Саммари будет генерироваться через выбранного провайдера.'
+      }
+      step={4}
+      totalSteps={isMac ? 5 : 4}
     >
       <div className="flex flex-col items-center space-y-6">
         {/* Download Cards */}
@@ -488,7 +499,7 @@ export function DownloadProgressStep() {
             '~227 MB'
           )}
 
-          {renderDownloadCard(
+          {providerDecision?.kind === 'local' && renderDownloadCard(
             'Локальная LLM для саммари',
             <Sparkles className="w-5 h-5 text-gray-600" />,
             summaryState,
@@ -497,9 +508,13 @@ export function DownloadProgressStep() {
           )}
         </div>
 
-        {/* Info Message - Only show when Parakeet is downloaded */}
+        {/* Info Message - Only relevant when there IS a background summary
+            download to wait for (i.e. the user picked Local). For cloud/skip
+            there's no LLM file downloading, so the banner would be misleading. */}
         <AnimatePresence>
-          {parakeetDownloaded && !summaryModelDownloaded && (
+          {parakeetDownloaded &&
+            providerDecision?.kind === 'local' &&
+            !summaryModelDownloaded && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}

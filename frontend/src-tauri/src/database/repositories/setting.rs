@@ -108,6 +108,44 @@ impl SettingsRepository {
         Ok(())
     }
 
+    /// Record the user's onboarding LLM-provider decision. `marker` is one of
+    /// "local", "cloud:<provider>", "deferred". Also stamps `provider_chosen_at`.
+    /// Safe to call before the singleton settings row exists: the INSERT branch
+    /// creates it with default provider values, mirroring `save_api_key`'s pattern.
+    pub async fn set_onboarding_provider_choice(
+        pool: &SqlitePool,
+        marker: &str,
+    ) -> std::result::Result<(), sqlx::Error> {
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            r#"
+            INSERT INTO settings (id, provider, model, "whisperModel",
+                                  onboarding_provider_choice, provider_chosen_at)
+            VALUES ('1', 'openai', 'gpt-4o-2024-11-20', 'large-v3', $1, $2)
+            ON CONFLICT(id) DO UPDATE SET
+                onboarding_provider_choice = $1,
+                provider_chosen_at = $2
+            "#,
+        )
+        .bind(marker)
+        .bind(&now)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Read the onboarding choice marker. `None` means "not set yet" (still in
+    /// onboarding, or a pre-migration install that never re-ran onboarding).
+    pub async fn get_onboarding_provider_choice(
+        pool: &SqlitePool,
+    ) -> std::result::Result<Option<String>, sqlx::Error> {
+        let marker: Option<String> =
+            sqlx::query_scalar("SELECT onboarding_provider_choice FROM settings WHERE id = '1' LIMIT 1")
+                .fetch_optional(pool)
+                .await?;
+        Ok(marker)
+    }
+
     pub async fn get_api_key(
         pool: &SqlitePool,
         provider: &str,

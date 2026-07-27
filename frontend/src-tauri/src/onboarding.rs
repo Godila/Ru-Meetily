@@ -23,6 +23,29 @@ pub struct ModelStatus {
     pub summary: String,   // Generic field for summary model (Qwen 3.5, Ruadapt Qwen3, or legacy Gemma variants)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selected_summary_model: Option<String>,
+    /// Onboarding LLM-provider decision marker, mirrors the DB column of the
+    /// same name: "local" | "cloud:<provider>" | "deferred" | None.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary_provider_choice: Option<String>,
+}
+
+/// The user's LLM-provider decision made during onboarding. Serialised as a
+/// tagged union (`{"kind":"local",...}`) so the frontend's discriminated union
+/// maps 1:1 and the compiler enforces exhaustive handling on both sides.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum OnboardingProviderChoice {
+    /// Download and use a local built-in model (auto-recommended from RAM).
+    Local { model: String },
+    /// Use a cloud provider with an API key. `provider` is one of the
+    /// cloud LLMProvider ids (caila/openai/claude/openrouter).
+    Cloud {
+        provider: String,
+        api_key: Option<String>,
+        model: String,
+    },
+    /// Skip LLM selection entirely; the app will ask again on first summary.
+    Skip,
 }
 
 impl Default for OnboardingStatus {
@@ -35,6 +58,7 @@ impl Default for OnboardingStatus {
                 parakeet: "not_downloaded".to_string(),
                 summary: "not_downloaded".to_string(),  // Changed from gemma
                 selected_summary_model: None,
+                summary_provider_choice: None,
             },
             last_updated: chrono::Utc::now().to_rfc3339(),
         }
@@ -171,28 +195,75 @@ pub async fn reset_onboarding_status_cmd<R: Runtime>(
 pub async fn complete_onboarding<R: Runtime>(
     app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
-    model: String,
+    choice: OnboardingProviderChoice,
 ) -> Result<(), String> {
-    info!("Completing onboarding with builtin-ai model: {}", model);
-
-    // Step 1: Save model configuration to SQLite database FIRST
     let pool = state.db_manager.pool();
 
-    // Onboarding always uses builtin-ai (local LLM)
-    if let Err(e) = SettingsRepository::save_model_config(
-        pool,
-        "builtin-ai",
-        &model,
-        "large-v3",
-        None,
-    ).await {
-        error!("Failed to save builtin-ai model config: {}", e);
-        return Err(format!("Failed to save builtin-ai model config: {}", e));
-    }
-    info!("Saved builtin-ai model config: model={}", model);
+    // Branch on the user's LLM-provider decision. STT (GigaAM) is always
+    // saved below — this match only concerns the summary-side config.
+    let (provider_for_status, choice_marker, saved_model_for_status) = match &choice {
+        OnboardingProviderChoice::Local { model } => {
+            info!("Completing onboarding: local built-in model = {}", model);
+            if let Err(e) = SettingsRepository::save_model_config(
+                pool,
+                "builtin-ai",
+                model,
+                "large-v3",
+                None,
+            ).await {
+                error!("Failed to save builtin-ai model config: {}", e);
+                return Err(format!("Failed to save builtin-ai model config: {}", e));
+            }
+            ("builtin-ai".to_string(), "local".to_string(), model.clone())
+        }
+        OnboardingProviderChoice::Cloud { provider, api_key, model } => {
+            info!("Completing onboarding: cloud provider = {}, model = {}", provider, model);
+            if let Err(e) = SettingsRepository::save_model_config(
+                pool,
+                provider,
+                model,
+                "large-v3",
+                None,
+            ).await {
+                error!("Failed to save cloud model config: {}", e);
+                return Err(format!("Failed to save cloud model config: {}", e));
+            }
+            if let Some(key) = api_key {
+                if !key.trim().is_empty() {
+                    if let Err(e) = SettingsRepository::save_api_key(pool, provider, key).await {
+                        // custom-openai legitimately rejects save_api_key — its
+                        // key lives in customOpenAIConfig. Don't fail onboarding
+                        // for that; the frontend persists it via a separate call.
+                        if provider != "custom-openai" {
+                            error!("Failed to save cloud api key: {}", e);
+                            return Err(format!("Failed to save cloud api key: {}", e));
+                        }
+                    }
+                }
+            }
+            (
+                provider.clone(),
+                format!("cloud:{}", provider),
+                model.clone(),
+            )
+        }
+        OnboardingProviderChoice::Skip => {
+            info!("Completing onboarding: user deferred LLM provider selection");
+            // Do NOT overwrite the active provider/model — leave whatever the
+            // INSERT default left ("openai"/"gpt-4o..."). The frontend lazy-gate
+            // will prompt the user on first summary generation.
+            ("deferred".to_string(), "deferred".to_string(), "deferred".to_string())
+        }
+    };
 
-    // Seed the GPU-toggle default: ON iff a GPU was detected. Best-effort —
-    // a failure here must not block onboarding completion.
+    // Record the onboarding choice marker (separate column, keeps `provider`
+    // NOT NULL invariant intact). Best-effort: a failure here is logged but
+    // does not block completion, since the active provider is already saved.
+    if let Err(e) = SettingsRepository::set_onboarding_provider_choice(pool, &choice_marker).await {
+        warn!("Failed to record onboarding_provider_choice marker: {}", e);
+    }
+
+    // Seed the GPU-toggle default: ON iff a GPU was detected. Best-effort.
     let default_use_gpu =
         crate::audio::hardware_detector::HardwareProfile::detect().has_gpu_acceleration;
     if let Err(e) = SettingsRepository::set_use_gpu(pool, default_use_gpu).await {
@@ -214,22 +285,29 @@ pub async fn complete_onboarding<R: Runtime>(
     }
     info!("Saved transcription model config: provider=gigaam, model={}", crate::config::DEFAULT_GIGAAM_MODEL);
 
-    // Step 2: Only NOW mark onboarding as complete (after DB operations succeed)
+    // Only NOW mark onboarding as complete (after DB operations succeed).
     let mut status = load_onboarding_status(&app)
         .await
         .map_err(|e| format!("Failed to load onboarding status: {}", e))?;
 
     status.completed = true;
-    status.current_step = 4; // Max step (4 on macOS with permissions, 3 on other platforms)
+    status.current_step = 4; // Max step (5 on macOS with permissions, 4 on other platforms)
     status.model_status.parakeet = "downloaded".to_string();
-    status.model_status.summary = "downloaded".to_string();
-    status.model_status.selected_summary_model = Some(model.clone());
+    // For Skip/cloud the "summary" model isn't a downloaded file; use a marker
+    // that the frontend restore logic can distinguish from a half-downloaded Qwen.
+    status.model_status.summary = match &choice {
+        OnboardingProviderChoice::Local { .. } => "downloaded".to_string(),
+        OnboardingProviderChoice::Cloud { .. } => "cloud".to_string(),
+        OnboardingProviderChoice::Skip => "deferred".to_string(),
+    };
+    status.model_status.selected_summary_model = Some(saved_model_for_status);
+    status.model_status.summary_provider_choice = Some(choice_marker);
 
     save_onboarding_status(&app, &status)
         .await
         .map_err(|e| format!("Failed to save completed onboarding status: {}", e))?;
 
-    info!("Onboarding completed successfully with model: {}", model);
+    info!("Onboarding completed successfully (provider_for_status={}, marker={})", provider_for_status, status.model_status.summary_provider_choice.as_deref().unwrap_or("?"));
     Ok(())
 }
 
@@ -254,5 +332,49 @@ mod tests {
         .expect("old onboarding status should remain compatible");
 
         assert_eq!(status.model_status.selected_summary_model, None);
+        // The new field must default to None on legacy payloads.
+        assert_eq!(status.model_status.summary_provider_choice, None);
+    }
+
+    #[test]
+    fn provider_choice_local_roundtrips() {
+        let choice = OnboardingProviderChoice::Local {
+            model: "qwen3.5:4b".to_string(),
+        };
+        let json = serde_json::to_string(&choice).unwrap();
+        assert!(json.contains(r#""kind":"local""#), "json was: {}", json);
+        let back: OnboardingProviderChoice = serde_json::from_str(&json).unwrap();
+        match back {
+            OnboardingProviderChoice::Local { model } => assert_eq!(model, "qwen3.5:4b"),
+            other => panic!("expected Local, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn provider_choice_cloud_roundtrips() {
+        let json = r#"{"kind":"cloud","provider":"caila","api_key":"secret","model":"just-ai/x"}"#;
+        let choice: OnboardingProviderChoice = serde_json::from_str(json).unwrap();
+        match choice {
+            OnboardingProviderChoice::Cloud { provider, api_key, model } => {
+                assert_eq!(provider, "caila");
+                assert_eq!(api_key.as_deref(), Some("secret"));
+                assert_eq!(model, "just-ai/x");
+            }
+            other => panic!("expected Cloud, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn provider_choice_skip_roundtrips() {
+        let json = r#"{"kind":"skip"}"#;
+        let choice: OnboardingProviderChoice = serde_json::from_str(json).unwrap();
+        assert!(matches!(choice, OnboardingProviderChoice::Skip));
+    }
+
+    #[test]
+    fn provider_choice_rejects_unknown_kind() {
+        let json = r#"{"kind":"deferred"}"#;
+        let result: Result<OnboardingProviderChoice, _> = serde_json::from_str(json);
+        assert!(result.is_err(), "unknown kind should not deserialize");
     }
 }
