@@ -66,6 +66,23 @@ impl SamplingParams {
         }
     }
 
+    /// RuadaptQwen3-4B preset, following RefalMachine's recommendations:
+    /// low temperature (0.3) for structured Russian summaries, top_p 0.9,
+    /// repetition_penalty 1.05 to avoid repetition loops on Russian text.
+    /// Source: https://huggingface.co/RefalMachine/RuadaptQwen3-4B-Instruct
+    pub fn ruadapt_summary(stop_tokens: Vec<String>) -> Self {
+        Self {
+            temperature: 0.3,
+            top_k: 40,
+            top_p: 0.9,
+            presence_penalty: 0.0,
+            frequency_penalty: 0.0,
+            repeat_penalty: 1.05,
+            penalty_last_n: 256,
+            stop_tokens,
+        }
+    }
+
     /// Gemma 3 instruct preset, matching the prior Gemma sampling behavior.
     pub fn gemma3_instruct(stop_tokens: Vec<String>) -> Self {
         Self {
@@ -189,18 +206,21 @@ pub fn get_available_models() -> Vec<ModelDef> {
             sampling: SamplingParams::qwen35_summary(vec!["<|im_end|>".to_string()]),
             description: "High-quality Qwen 3.5 model for built-in summaries. Best local Qwen option in the current lineup.".to_string(),
         },
-        // Gemma 3 4B - Legacy alternative retained for users who prefer Gemma output.
+        // RuadaptQwen3-4B - Russian-adapted Qwen3-4B-Instruct-2507 from RefalMachine.
+        // Continued pre-training on a Russian corpus + a 48K-Russian-token tokenizer
+        // extension yields up to 2x faster Russian generation versus base Qwen3.5.
+        // Replaces the legacy Gemma 3 4B slot.
         ModelDef {
-            name: "gemma3:4b".to_string(),
-            display_name: "Gemma 3 4B (Balanced)".to_string(),
-            gguf_file: "gemma-3-4b-it-Q4_K_M.gguf".to_string(),
-            template: "gemma3".to_string(),
-            download_url: "https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf".to_string(),
-            size_mb: 2374,
-            context_size: 32768,
-            layer_count: 35,
-            sampling: SamplingParams::gemma3_instruct(vec!["<end_of_turn>".to_string()]),
-            description: "Balanced model. Great quality/speed trade-off. Requires ~3.5GB RAM.".to_string(),
+            name: "ruadapt-qwen3:4b".to_string(),
+            display_name: "Ruadapt Qwen3 4B (Russian-optimized)".to_string(),
+            gguf_file: "RuadaptQwen3-4B-Instruct-Q4_K_M.gguf".to_string(),
+            template: "qwen3.5_nonthinking".to_string(),
+            download_url: "https://huggingface.co/RefalMachine/RuadaptQwen3-4B-Instruct-GGUF/resolve/main/Q4_K_M.gguf".to_string(),
+            size_mb: 2490,
+            context_size: 65536,
+            layer_count: 36,
+            sampling: SamplingParams::ruadapt_summary(vec!["<|im_end|>".to_string()]),
+            description: "Russian-adapted Qwen3-4B. Up to 2x faster Russian generation, tuned for Russian meeting summaries.".to_string(),
         },
         // Gemma 3 1B - Visible legacy tier retained for already-shipped users.
         ModelDef {
@@ -361,7 +381,7 @@ mod tests {
     }
 
     #[test]
-    fn gemma_models_use_huggingface_urls_and_gemma3_instruct_sampling() {
+    fn gemma3_1b_uses_huggingface_url_and_gemma3_instruct_sampling() {
         let gemma_1b = get_model_by_name("gemma3:1b").expect("gemma 1b model should exist");
         assert_eq!(gemma_1b.gguf_file, "gemma-3-1b-it-Q8_0.gguf");
         assert_eq!(
@@ -376,20 +396,28 @@ mod tests {
         assert_eq!(gemma_1b.sampling.frequency_penalty, 0.0);
         assert_eq!(gemma_1b.sampling.repeat_penalty, 1.0);
         assert_eq!(gemma_1b.sampling.penalty_last_n, 0);
+    }
 
-        let gemma_4b = get_model_by_name("gemma3:4b").expect("gemma 4b model should exist");
+    #[test]
+    fn ruadapt_model_registered_with_expected_metadata() {
+        let ruadapt = get_model_by_name("ruadapt-qwen3:4b")
+            .expect("ruadapt-qwen3:4b model should exist");
+        assert_eq!(ruadapt.display_name, "Ruadapt Qwen3 4B (Russian-optimized)");
+        assert_eq!(ruadapt.gguf_file, "RuadaptQwen3-4B-Instruct-Q4_K_M.gguf");
+        assert_eq!(ruadapt.template, "qwen3.5_nonthinking");
         assert_eq!(
-            gemma_4b.download_url,
-            "https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf"
+            ruadapt.download_url,
+            "https://huggingface.co/RefalMachine/RuadaptQwen3-4B-Instruct-GGUF/resolve/main/Q4_K_M.gguf"
         );
-        assert_eq!(gemma_4b.sampling, SamplingParams::gemma3_instruct(vec!["<end_of_turn>".to_string()]));
-        assert_eq!(gemma_4b.sampling.temperature, 1.0);
-        assert_eq!(gemma_4b.sampling.top_k, 64);
-        assert_eq!(gemma_4b.sampling.top_p, 0.95);
-        assert_eq!(gemma_4b.sampling.presence_penalty, 0.0);
-        assert_eq!(gemma_4b.sampling.frequency_penalty, 0.0);
-        assert_eq!(gemma_4b.sampling.repeat_penalty, 1.0);
-        assert_eq!(gemma_4b.sampling.penalty_last_n, 0);
+        assert_eq!(ruadapt.size_mb, 2490);
+        assert_eq!(ruadapt.context_size, 65536);
+        assert_eq!(ruadapt.layer_count, 36);
+        assert_eq!(ruadapt.sampling, SamplingParams::ruadapt_summary(vec!["<|im_end|>".to_string()]));
+        assert_eq!(ruadapt.sampling.temperature, 0.3);
+        assert_eq!(ruadapt.sampling.top_k, 40);
+        assert_eq!(ruadapt.sampling.top_p, 0.9);
+        assert_eq!(ruadapt.sampling.repeat_penalty, 1.05);
+        assert_eq!(ruadapt.sampling.stop_tokens, vec!["<|im_end|>"]);
     }
 
     #[test]

@@ -66,6 +66,7 @@ describe('getSummaryModelSizeMb', () => {
   it('returns known sizes', () => {
     expect(getSummaryModelSizeMb('qwen3.5:2b')).toBe(1221);
     expect(getSummaryModelSizeMb('qwen3.5:4b')).toBe(2614);
+    expect(getSummaryModelSizeMb('ruadapt-qwen3:4b')).toBe(2490);
     expect(getSummaryModelSizeMb('gemma3:1b')).toBe(1019);
   });
 
