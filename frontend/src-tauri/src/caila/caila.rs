@@ -40,23 +40,11 @@ const CACHE_TTL_SECS: u64 = 300;
 /// Caila OpenAI adapter base URL (hardcoded, not user-editable)
 const CAILA_BASE_URL: &str = "https://caila.io/api/adapters/openai";
 
-/// Fallback models when API fetch fails or no key is provided.
-/// These are known-good model IDs verified against the live Caila API.
-const FALLBACK_MODELS: &[&str] = &[
-    "just-ai/deepseek-deepseek/deepseek/deepseek-v4-flash",
-    "just-ai/deepseek-deepseek/deepseek/deepseek-v4-pro",
-];
-
-/// Get fallback models as CailaModel vec
-fn get_fallback_models() -> Vec<CailaModel> {
-    FALLBACK_MODELS
-        .iter()
-        .map(|id| CailaModel {
-            id: id.to_string(),
-            owned_by: None,
-        })
-        .collect()
-}
+// Note: there is intentionally NO static fallback model list. Returning
+// hardcoded model IDs when the API key is missing (or the fetch fails) would
+// mislead the user into thinking those models are usable without auth — they
+// are not. The frontend renders an empty picker with an explanatory message
+// instead.
 
 /// Check if model is a chat-capable model (filter out non-chat services).
 ///
@@ -86,12 +74,14 @@ fn is_chat_model(model_id: &str) -> bool {
 /// Vector of available models, or fallback models on error / missing key
 #[command]
 pub async fn get_caila_models(api_key: Option<String>) -> Result<Vec<CailaModel>, String> {
-    // Return fallback if no API key provided
+    // Without an API key we return an empty list. There is deliberately no
+    // hardcoded fallback: showing model IDs that require auth would mislead the
+    // user. The frontend renders an explanatory empty state instead.
     let api_key = match api_key {
         Some(key) if !key.trim().is_empty() => key.trim().to_string(),
         _ => {
-            log::info!("No Caila API key provided, returning fallback models");
-            return Ok(get_fallback_models());
+            log::info!("No Caila API key provided, returning empty model list");
+            return Ok(Vec::new());
         }
     };
 
@@ -120,22 +110,22 @@ pub async fn get_caila_models(api_key: Option<String>) -> Result<Vec<CailaModel>
     {
         Ok(resp) => resp,
         Err(e) => {
-            log::warn!("Failed to fetch Caila models: {}. Using fallback.", e);
-            return Ok(get_fallback_models());
+            log::warn!("Failed to fetch Caila models: {}. Returning empty list.", e);
+            return Ok(Vec::new());
         }
     };
 
     if !response.status().is_success() {
         let status = response.status();
-        log::warn!("Caila API returned status {}. Using fallback models.", status);
-        return Ok(get_fallback_models());
+        log::warn!("Caila API returned status {}. Returning empty list.", status);
+        return Ok(Vec::new());
     }
 
     let api_response: CailaApiResponse = match response.json().await {
         Ok(data) => data,
         Err(e) => {
-            log::warn!("Failed to parse Caila response: {}. Using fallback.", e);
-            return Ok(get_fallback_models());
+            log::warn!("Failed to parse Caila response: {}. Returning empty list.", e);
+            return Ok(Vec::new());
         }
     };
 
@@ -150,10 +140,9 @@ pub async fn get_caila_models(api_key: Option<String>) -> Result<Vec<CailaModel>
         })
         .collect();
 
-    // If no models returned, use fallback
     if models.is_empty() {
-        log::warn!("No chat models returned from Caila API. Using fallback.");
-        return Ok(get_fallback_models());
+        log::warn!("No chat models returned from Caila API. Returning empty list.");
+        return Ok(Vec::new());
     }
 
     log::info!("Fetched {} Caila models from API", models.len());

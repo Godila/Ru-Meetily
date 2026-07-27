@@ -148,66 +148,14 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       <div>
         <h3 className="text-lg font-semibold mb-4">Настройки записи</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Настройте, как сохраняются аудиозаписи во время встреч.
+          Выберите аудиоустройства и настройте сохранение записей встреч.
         </p>
       </div>
 
-      {/* Auto Save Toggle */}
-      <div className="flex items-center justify-between p-4 border rounded-lg">
-        <div className="flex-1">
-          <div className="font-medium">Сохранять аудиозаписи</div>
-          <div className="text-sm text-gray-600">
-            Автоматически сохранять аудиофайлы при остановке записи
-          </div>
-        </div>
-        <Switch
-          checked={preferences.auto_save}
-          onCheckedChange={handleAutoSaveToggle}
-          disabled={saving}
-        />
-      </div>
-
-      {/* File format info - Only shown when auto_save is enabled */}
-      {preferences.auto_save && (
-        <div className="space-y-4">
-          <div className="p-4 border rounded-lg bg-blue-50">
-            <div className="text-sm text-blue-800">
-              <strong>Формат:</strong> {preferences.file_format.toUpperCase()}
-            </div>
-            <div className="text-xs text-blue-600 mt-1">
-              Записи сохраняются с временной меткой: recording_ГГГГММДД_ЧЧММСС.{preferences.file_format}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Info when auto_save is disabled */}
-      {!preferences.auto_save && (
-        <div className="p-4 border rounded-lg bg-yellow-50">
-          <div className="text-sm text-yellow-800">
-            Аудиозапись отключена. Включите «Сохранять аудиозаписи», чтобы автоматически сохранять аудио встреч.
-          </div>
-        </div>
-      )}
-
-      {/* Recording Notification Toggle */}
-      <div className="flex items-center justify-between p-4 border rounded-lg">
-        <div className="flex-1">
-          <div className="font-medium">Уведомление о начале записи</div>
-          <div className="text-sm text-gray-600">
-            Показывать напоминание участникам о начале записи
-          </div>
-        </div>
-        <Switch
-          checked={showRecordingNotification}
-          onCheckedChange={handleNotificationToggle}
-        />
-      </div>
-
-      {/* Device Preferences */}
+      {/* Device Preferences — primary recording concern, shown first */}
       <div className="space-y-4">
-        <div className="border-t pt-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">Устройства по умолчанию</h4>
+        <div>
+          <h4 className="text-base font-medium text-gray-900 mb-2">Аудиоустройства</h4>
           <p className="text-sm text-gray-600 mb-4">
             Укажите предпочитаемые микрофон и устройство системного звука для записи. Они будут автоматически выбираться при новых записях.
           </p>
@@ -222,6 +170,47 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
               disabled={saving}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Secondary preferences */}
+      <div className="border-t pt-6 space-y-4">
+        {/* Auto Save Toggle */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="flex-1">
+            <div className="font-medium">Сохранять аудиозаписи</div>
+            <div className="text-sm text-gray-600">
+              Автоматически сохранять аудиофайлы при остановке записи
+            </div>
+          </div>
+          <Switch
+            checked={preferences.auto_save}
+            onCheckedChange={handleAutoSaveToggle}
+            disabled={saving}
+          />
+        </div>
+
+        {/* Info when auto_save is disabled */}
+        {!preferences.auto_save && (
+          <div className="p-4 border rounded-lg bg-yellow-50">
+            <div className="text-sm text-yellow-800">
+              Аудиозапись отключена. Включите «Сохранять аудиозаписи», чтобы автоматически сохранять аудио встреч.
+            </div>
+          </div>
+        )}
+
+        {/* Recording Notification Toggle */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="flex-1">
+            <div className="font-medium">Уведомление о начале записи</div>
+            <div className="text-sm text-gray-600">
+              Показывать напоминание участникам о начале записи
+            </div>
+          </div>
+          <Switch
+            checked={showRecordingNotification}
+            onCheckedChange={handleNotificationToggle}
+          />
         </div>
       </div>
     </div>

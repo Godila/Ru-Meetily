@@ -20,12 +20,20 @@ export function PreferenceSettings() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [previousNotificationsEnabled, setPreviousNotificationsEnabled] = useState<boolean | null>(null);
   const hasTrackedViewRef = useRef(false);
+  const [fileFormat, setFileFormat] = useState<string>('mp4');
 
   // Lazy load preferences on mount (only loads if not already cached)
   useEffect(() => {
     loadPreferences();
     // Reset tracking ref on mount (every tab visit)
     hasTrackedViewRef.current = false;
+
+    // Load recording file format (informational, shown next to recordings folder)
+    invoke<{ file_format?: string }>('get_recording_preferences')
+      .then((prefs) => {
+        if (prefs?.file_format) setFileFormat(prefs.file_format);
+      })
+      .catch((err) => console.error('Failed to load recording format:', err));
   }, [loadPreferences]);
 
   // Track preferences viewed analytics on every tab visit (once per mount)
@@ -202,13 +210,19 @@ export function PreferenceSettings() {
             <div className="text-sm text-gray-600 mb-3 break-all font-mono text-xs">
               {storageLocations?.recordings || 'Загрузка...'}
             </div>
-            <button
-              onClick={() => handleOpenFolder('recordings')}
-              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <FolderOpen className="w-4 h-4" />
-              Открыть папку
-            </button>
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={() => handleOpenFolder('recordings')}
+                className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <FolderOpen className="w-4 h-4" />
+                Открыть папку
+              </button>
+              <span className="text-xs text-gray-500">
+                Формат: <strong className="text-gray-700">{fileFormat.toUpperCase()}</strong>
+                <span className="text-gray-400"> · recording_ГГГГММДД_ЧЧММСС.{fileFormat}</span>
+              </span>
+            </div>
           </div>
         </div>
 

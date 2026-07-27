@@ -97,12 +97,9 @@ const CLAUDE_FALLBACK_MODELS = [
   'claude-3-5-sonnet-latest',
 ];
 
-// Caila fallback models — known-good IDs verified against the live API.
-// Used when no API key is provided or the /models fetch fails.
-const CAILA_FALLBACK_MODELS = [
-  'just-ai/deepseek-deepseek/deepseek/deepseek-v4-flash',
-  'just-ai/deepseek-deepseek/deepseek/deepseek-v4-pro',
-];
+// Note: Caila does NOT use a static fallback list. Without an API key the
+// model picker is intentionally empty (see modelOptions.caila) — showing
+// hardcoded IDs would imply they're usable without authentication.
 
 /**
  * Split a Caila model ID of the form `just-ai/<service>/<vendor>/<model>`
@@ -256,7 +253,9 @@ export function ModelSettingsModal({
     openrouter: openRouterModels.map((m) => m.id),
     'builtin-ai': builtinAiModels.map((m) => m.name),
     'custom-openai': customOpenAIModel ? [customOpenAIModel] : [], // User specifies model manually
-    caila: cailaModels.length > 0 ? cailaModels : CAILA_FALLBACK_MODELS,
+    // Caila: real list only after API key is entered. No fallback when key is
+    // missing — showing hardcoded IDs would imply they're available without auth.
+    caila: cailaModels,
   };
 
   const requiresApiKey =
@@ -585,10 +584,13 @@ export function ModelSettingsModal({
     }
   };
 
-  // Fetch Caila models from API (raw-key auth, no "Bearer" prefix)
+  // Fetch Caila models from API (raw-key auth, no "Bearer" prefix).
+  // Without a key we leave the list empty — no fake fallback, since showing
+  // hardcoded model IDs would mislead the user into thinking they're usable
+  // without authentication.
   const loadCailaModels = async (key: string | null) => {
     if (!key?.trim()) {
-      setCailaModels([]); // Will use fallback via modelOptions
+      setCailaModels([]);
       return;
     }
     setIsLoadingCaila(true);
@@ -597,7 +599,7 @@ export function ModelSettingsModal({
       setCailaModels(data.map((m) => m.id));
     } catch (err) {
       console.error('Error loading Caila models:', err);
-      setCailaModels([]); // Will use fallback via modelOptions
+      setCailaModels([]);
     } finally {
       setIsLoadingCaila(false);
     }
@@ -943,6 +945,8 @@ export function ModelSettingsModal({
                     <span className="truncate">
                       {modelConfig.provider === 'caila' && modelConfig.model
                         ? splitCailaModelId(modelConfig.model).name
+                        : modelConfig.provider === 'caila' && !apiKey?.trim()
+                        ? "Введите API-ключ для загрузки моделей"
                         : modelConfig.model || "Выберите модель..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -965,7 +969,11 @@ export function ModelSettingsModal({
                         </div>
                       ) : (
                         <>
-                          <CommandEmpty>Модели не найдены.</CommandEmpty>
+                          <CommandEmpty>
+                            {modelConfig.provider === 'caila' && !apiKey?.trim()
+                              ? 'Введите API-ключ Caila ниже — список моделей загрузится автоматически.'
+                              : 'Модели не найдены.'}
+                          </CommandEmpty>
                           <CommandGroup>
                             {modelOptions[modelConfig.provider]?.map((model) => {
                               const isCaila = modelConfig.provider === 'caila';
