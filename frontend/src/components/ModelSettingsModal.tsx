@@ -116,6 +116,27 @@ const CAILA_FALLBACK_MODELS = [
   'just-ai/deepseek-deepseek/deepseek/deepseek-v4-pro',
 ];
 
+/**
+ * Split a Caila model ID of the form `just-ai/<service>/<vendor>/<model>`
+ * into a friendly display name and a prefix hint. Non-Caila (short) IDs are
+ * returned as-is in `name` with an empty `prefix`.
+ *
+ * Example:
+ *   splitCailaModelId('just-ai/alibaba-qwen2-5-32b-instruct-fp8-dynamic/CalamitousFelicitousness/Qwen2.5-32B-Instruct-fp8-dynamic')
+ *   => { prefix: 'just-ai/alibaba-qwen2-5-32b-instruct-fp8-dynamic/CalamitousFelicitousness',
+ *        name:   'Qwen2.5-32B-Instruct-fp8-dynamic' }
+ */
+function splitCailaModelId(id: string): { prefix: string; name: string } {
+  const slashIdx = id.lastIndexOf('/');
+  if (slashIdx === -1) {
+    return { prefix: '', name: id };
+  }
+  return {
+    prefix: id.slice(0, slashIdx),
+    name: id.slice(slashIdx + 1),
+  };
+}
+
 interface ModelSettingsModalProps {
   modelConfig: ModelConfig;
   setModelConfig: (config: ModelConfig | ((prev: ModelConfig) => ModelConfig)) => void;
@@ -956,15 +977,23 @@ export function ModelSettingsModal({
                     variant="outline"
                     role="combobox"
                     aria-expanded={modelComboboxOpen}
-                    className="flex-1 max-w-[200px] justify-between font-normal"
+                    className={cn(
+                      "flex-1 justify-between font-normal",
+                      modelConfig.provider === 'caila' ? "max-w-[280px]" : "max-w-[200px]"
+                    )}
                   >
                     <span className="truncate">
-                      {modelConfig.model || "Выберите модель..."}
+                      {modelConfig.provider === 'caila' && modelConfig.model
+                        ? splitCailaModelId(modelConfig.model).name
+                        : modelConfig.model || "Выберите модель..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[250px] p-0" align="start">
+                <PopoverContent
+                  className={cn("p-0", modelConfig.provider === 'caila' ? "w-[460px]" : "w-[250px]")}
+                  align="start"
+                >
                   <Command>
                     <CommandInput placeholder="Поиск моделей..." />
                     <CommandList className="max-h-[300px]">
@@ -981,24 +1010,38 @@ export function ModelSettingsModal({
                         <>
                           <CommandEmpty>Модели не найдены.</CommandEmpty>
                           <CommandGroup>
-                            {modelOptions[modelConfig.provider]?.map((model) => (
-                              <CommandItem
-                                key={model}
-                                value={model}
-                                onSelect={(currentValue) => {
-                                  setModelConfig((prev: ModelConfig) => ({ ...prev, model: currentValue }));
-                                  setModelComboboxOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    modelConfig.model === model ? "opacity-100" : "opacity-0"
+                            {modelOptions[modelConfig.provider]?.map((model) => {
+                              const isCaila = modelConfig.provider === 'caila';
+                              const { prefix, name } = isCaila ? splitCailaModelId(model) : { prefix: '', name: model };
+                              return (
+                                <CommandItem
+                                  key={model}
+                                  value={model}
+                                  onSelect={(currentValue) => {
+                                    setModelConfig((prev: ModelConfig) => ({ ...prev, model: currentValue }));
+                                    setModelComboboxOpen(false);
+                                  }}
+                                  className={isCaila ? "py-2" : undefined}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4 shrink-0",
+                                      modelConfig.model === model ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {isCaila ? (
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="truncate font-medium text-sm leading-tight">{name}</span>
+                                      {prefix && (
+                                        <span className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{prefix}</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="truncate">{model}</span>
                                   )}
-                                />
-                                <span className="truncate">{model}</span>
-                              </CommandItem>
-                            ))}
+                                </CommandItem>
+                              );
+                            })}
                           </CommandGroup>
                         </>
                       )}
