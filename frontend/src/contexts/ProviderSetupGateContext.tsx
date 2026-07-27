@@ -45,6 +45,7 @@ import {
 } from '@/components/ModelSettingsModal';
 import { useConfig } from '@/contexts/ConfigContext';
 import { invoke } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 
 export type ProviderSetupReason =
@@ -101,7 +102,9 @@ export function ProviderSetupGateProvider({
     async (next: ModelConfig) => {
       // Persist to the DB, then mirror into the global ConfigContext state so
       // every consumer sees the update immediately. This mirrors the flow used
-      // by Sidebar/index.tsx:185-196 and meeting-details/page-content.tsx.
+      // by Sidebar/index.tsx:185-196 and meeting-details/page-content.tsx,
+      // including the model-config-updated emit that keeps Sidebar's local
+      // modelConfig copy in sync (Sidebar does not read from ConfigContext).
       try {
         await invoke('api_save_model_config', {
           provider: next.provider,
@@ -111,6 +114,7 @@ export function ProviderSetupGateProvider({
           ollamaEndpoint: next.ollamaEndpoint,
         });
         setModelConfig(next);
+        await emit('model-config-updated', next);
       } catch (err) {
         console.error('[ProviderSetupGate] save failed:', err);
       }

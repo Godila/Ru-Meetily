@@ -430,26 +430,10 @@ const Sidebar: React.FC = () => {
     setExpandedFolders(newExpanded);
   };
 
-  // The Rust tray menu calls window.openSettings(). The actual host of that
-  // dialog is now the global ProviderSetupGateContext (mounted in ClientLayout),
-  // which re-publishes window.openSettings itself — so Sidebar no longer needs
-  // its own registration. The tray-→-navigation case (jumping to /settings) is
-  // handled by the route change below.
-  // Kept as a no-op for backward compat in case older Rust builds still emit
-  // the event before the global provider is mounted.
-  useEffect(() => {
-    if (!(window as any).openSettings) {
-      (window as any).openSettings = () => {
-        router.push('/settings');
-      };
-    }
-    return () => {
-      // Only delete if we own it; the global provider may have set its own.
-      if ((window as any).openSettingsTraySidebar === true) {
-        delete (window as any).openSettings;
-      }
-    };
-  }, [router]);
+  // The Rust tray menu's window.openSettings() handler is owned by the global
+  // ProviderSetupGateContext (mounted in ClientLayout above Sidebar), which
+  // opens the model-settings dialog. Sidebar no longer registers its own
+  // handler — see ProviderSetupGateContext.useEffect for the registration.
 
   const renderCollapsedIcons = () => {
     if (!isCollapsed) return null;

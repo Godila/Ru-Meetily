@@ -441,8 +441,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     // Restore the LLM-provider decision from the saved marker. For a "cloud"
     // decision we don't re-validate the API key here — the lazy gate or the
     // post-onboarding Settings tab handles invalid keys.
+    //
+    // IMPORTANT: a "cloud" marker persisted from a mid-onboarding restart only
+    // stores the provider (e.g. "cloud:caila") — the model and api_key are NOT
+    // in the status JSON. Persisting such a partial decision would lead
+    // completeOnboarding to write an empty model to the DB. If the restored
+    // cloud decision has no model, discard it and force the user back to the
+    // ProviderChoice step (where they re-enter key + model).
     const marker = savedStatus.model_status.summary_provider_choice;
-    restoredDecision = decisionFromStatusMarker(marker, selectedSummaryModel);
+    const candidate = decisionFromStatusMarker(marker, selectedSummaryModel);
+    if (candidate?.kind === 'cloud' && !candidate.model) {
+      console.warn('[OnboardingContext] Discarding partial cloud decision (no model) — returning to ProviderChoice');
+      restoredDecision = null;
+    } else {
+      restoredDecision = candidate;
+    }
     if (restoredDecision) {
       setProviderDecision(restoredDecision);
       console.log('[OnboardingContext] Restored provider decision:', restoredDecision.kind);
@@ -525,8 +538,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       // this preserves the previous behaviour for existing users.
       let decision = providerDecision;
       if (!decision) {
-        const fallbackModel = selectedSummaryModel
-          || await invoke<string>('builtin_ai_get_recommended_model');
+        // `selectedSummaryModel` may hold a sentinel ("deferred") written by
+        // the Skip branch on a previous run — filter those out so we never
+        // pass them to builtin_ai_download_model.
+        const sentinel = (s: string | undefined | null): s is string =>
+          !!s && s !== 'deferred' && s !== 'cloud' && s !== 'not_downloaded';
+        const fallbackModel = sentinel(selectedSummaryModel)
+          ? selectedSummaryModel
+          : await invoke<string>('builtin_ai_get_recommended_model');
         setSelectedSummaryModel(fallbackModel);
         decision = { kind: 'local', model: fallbackModel };
         setProviderDecision(decision);
